@@ -12,7 +12,6 @@ class CSVHandler:
         self.barcode_type = config.get("barcode_type", "CODE39")
         self.expected_length = config.get("expected_length", 10)
         self.expected_columns = ["barcode_info", "construction_number", "location", "barcode_type", "timestamp"]  # 修正
-    print("\n出力内容確認開始...")
 
     def load_csv(self):
         try:

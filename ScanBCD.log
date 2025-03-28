@@ -503,3 +503,17 @@
 2025-03-28 11:26:24,127 - INFO - スキャン結果: {'barcode_info': '0000296078', 'construction_number': '4656', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 11:26:24'}
 2025-03-28 11:26:24,783 - INFO - スキャン結果: {'barcode_info': '0000296079', 'construction_number': '4656', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 11:26:24'}
 2025-03-28 11:26:41,044 - INFO - スキャン結果: {'barcode_info': '0000296077', 'construction_number': '4656', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 11:26:41'}
+2025-03-28 12:22:23,701 - INFO - スキャン結果: {'barcode_info': '0000287271', 'construction_number': '4656', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 12:22:23'}
+2025-03-28 12:22:26,093 - INFO - スキャン結果: {'barcode_info': '0000287277', 'construction_number': '4656', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 12:22:26'}
+2025-03-28 12:22:28,675 - INFO - スキャン結果: {'barcode_info': '0000296080', 'construction_number': '4656', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 12:22:28'}
+2025-03-28 12:22:28,960 - INFO - スキャン結果: {'barcode_info': '0000296226', 'construction_number': '4656', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 12:22:28'}
+2025-03-28 12:22:35,879 - INFO - スキャン結果: {'barcode_info': '0000296077', 'construction_number': '4656', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 12:22:35'}
+2025-03-28 12:23:04,510 - INFO - スキャン結果: {'barcode_info': '0000296078', 'construction_number': '4656', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 12:23:04'}
+2025-03-28 12:24:01,622 - INFO - スキャン結果: {'barcode_info': '0000296079', 'construction_number': '4656', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 12:24:01'}
+2025-03-28 12:39:47,792 - INFO - スキャン結果: {'barcode_info': '0000287271', 'construction_number': '4656', 'location': '棚', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 12:39:47'}
+2025-03-28 12:39:49,217 - INFO - スキャン結果: {'barcode_info': '0000296226', 'construction_number': '4656', 'location': '棚', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 12:39:49'}
+2025-03-28 12:39:50,227 - INFO - スキャン結果: {'barcode_info': '0000296080', 'construction_number': '4656', 'location': '棚', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 12:39:50'}
+2025-03-28 12:39:51,227 - INFO - スキャン結果: {'barcode_info': '0000296078', 'construction_number': '4656', 'location': '棚', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 12:39:51'}
+2025-03-28 12:39:52,524 - INFO - スキャン結果: {'barcode_info': '0000296079', 'construction_number': '4656', 'location': '棚', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 12:39:52'}
+2025-03-28 12:39:54,494 - INFO - スキャン結果: {'barcode_info': '0000296077', 'construction_number': '4656', 'location': '棚', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 12:39:54'}
+2025-03-28 12:40:02,850 - INFO - スキャン結果: {'barcode_info': '0000287277', 'construction_number': '4656', 'location': '棚', 'barcode_type': 'CODE39', 'timestamp': '2025-03-28 12:40:02'}
