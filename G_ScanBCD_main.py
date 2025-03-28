@@ -2,11 +2,12 @@
 
 import os
 import tkinter as tk
+import json
 from G_ScanBCD_Location import LocationSelector
 from G_ScanBCD_Scanner import BarcodeScanner
 from G_ScanBCD_FixCSV import CSVHandler
 from G_config import Config
-from G_ScanBCD_Results import ResultDisplay  # 追加
+from G_ScanBCD_Results import ResultDisplay
 
 
 def load_configuration():

@@ -131,7 +131,7 @@ class BarcodeScanner:
             if not ret:
                 break
 
-            barcodes = self.analyzer.analyze(frame)
+            barcodes, frame = self.analyzer.analyze(frame)
 
             # 残り時間を計算
             remaining_time = max(0, self.idle_timeout - (time.time() - self.last_scan_time))
