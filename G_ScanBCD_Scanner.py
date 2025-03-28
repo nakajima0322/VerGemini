@@ -82,12 +82,19 @@ class BarcodeScanner:
         self._create_data_dir()
 
         # CSVファイルのパス設定
-        self.csv_file =         os.path.join(self.data_dir, f"{self.construction_number}.csv")
-        self.data_csv_file =    "ScanBCD.dat"
+        if __name__ == "__main__":
+            self.data_file = self.config.get("data_file", "ScanBCD.dat")
+            self.csv_file = os.path.join(self.log_dir, self.data_file)
+        else:
+            self.csv_file = os.path.join(self.data_dir, f"{self.construction_number}.csv")
 
         print("\nスキャナー起動中...")
 
     def _setup_logging(self):
+        log_dir = self.config.get("log_dir", "log")
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        self.scan_log = os.path.join(log_dir, self.config.get("scan_log", "scan.log"))
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         handler = RotatingFileHandler(self.scan_log, maxBytes=1024*1024, backupCount=5, encoding='utf-8')
@@ -96,9 +103,12 @@ class BarcodeScanner:
         self.logger.addHandler(handler)
 
     def _create_data_dir(self):
-        self.data_dir = "data"
+        self.data_dir = self.config.get("data_dir", "data")
+        self.log_dir = self.config.get("log_dir", "log")
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
 
     def start(self):
         cap = cv2.VideoCapture(self.config.get("camera_index", 0))
@@ -106,8 +116,9 @@ class BarcodeScanner:
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.config.get("camera_height", 480))
 
         # data.csv を上書きモードで開く
-        data_csv_file = open(self.data_csv_file, mode='w', newline='', encoding='utf-8')
-        data_writer = csv.writer(data_csv_file)
+        if __name__ == "__main__":
+            data_csv_file = open(self.csv_file, mode='w', newline='', encoding='utf-8')
+            data_writer = csv.writer(data_csv_file)
 
         while True:
             current_time = time.time()
@@ -187,7 +198,8 @@ class BarcodeScanner:
         cv2.destroyAllWindows()
 
         # data.csv ファイルを閉じる
-        data_csv_file.close()
+        if __name__ == "__main__":
+            data_csv_file.close()
 
         # CSV 重複削除処理の追加（単体起動時以外）
         if __name__ != "__main__":
