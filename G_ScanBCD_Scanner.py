@@ -32,7 +32,6 @@ class BarcodeScanner:
         "scan_count",
         "display_time",
         "target_fps",
-        "scanned_info",
         "auto_stop",
         "idle_timeout"
     }
@@ -56,7 +55,6 @@ class BarcodeScanner:
         self.scan_count =       self.config.get("scan_count")
         self.display_time =     self.config.get("display_time")
         self.target_fps =       self.config.get("target_fps")
-        self.scanned_info =     self.config.get("scanned_info")
         self.auto_stop =        self.config.get("auto_stop")
         self.idle_timeout =     self.config.get("idle_timeout")
 
@@ -128,7 +126,7 @@ class BarcodeScanner:
             remaining_time = max(0, self.idle_timeout - (time.time() - self.last_scan_time))
 
             # オーバーレイを描画
-            self.display_scan_result(frame, barcodes, remaining_time)
+            frame = self.display_scan_result(frame, barcodes, remaining_time) #戻り値を受け取る
 
             if barcodes:
                 self.last_scan_time = time.time()  # バーコードが読み込まれた時間を更新
@@ -154,10 +152,16 @@ class BarcodeScanner:
                         # data.csv への出力（単体起動時のみ）
                         if __name__ == "__main__":
                             data_writer.writerow(data.values())
+                        
+                        #scanned_infoへの追加
+                        self.add_scanned_info(barcode_info, barcode_type)
                     else:
                         self.duplicate_count += 1  # 重複したスキャン数を更新
 
-            cv2.imshow('Barcode Scanner', frame)
+            if frame is not None and isinstance(frame, np.ndarray):
+                cv2.imshow('Barcode Scanner', frame)
+            else:
+                print("Error: Invalid frame received.")
 
             # ウィンドウの位置を右側に寄せる
             screen_width = 1366  # 画面の幅を設定（例として 1920 を使用）
@@ -191,57 +195,22 @@ class BarcodeScanner:
             handler.find_duplicates()
 
     def display_scan_result(self, frame, barcodes, remaining_time):
-        # オーバーレイ画像を事前に作成 (ループ外)
-        if not hasattr(self, 'overlay_image'):
-            self.overlay_image = np.zeros_like(frame, dtype=np.uint8)
-            # --- 静的な情報の描画をここに移動 ---
-            height, width, _ = frame.shape
-            overlay_x = 10
-            overlay_y = 30
-
-            text_mapping = self.config.get("display_text_mapping", {})
-            display_location = text_mapping.get(self.location, self.location)
-            spec_text = f"Type: {self.config.get('barcode_type', '-')} | Digits: {self.config.get('expected_length', '-')} | Location: {display_location} | Construction: {self.construction_number}"
-
-            font_scale = self.config.get("font_scale", 0.6)
-
-            # テキストを改行で分割
-            spec_text_lines = spec_text.split(" | ")
-
-            # 各行の幅を計算し、最大幅を取得
-            max_text_width = 0
-            text_heights = []
-            for line in spec_text_lines:
-                text_size = cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 2)[0]
-                max_text_width = max(max_text_width, text_size[0])
-                text_heights.append(text_size[1])
-
-            # 背景の幅と高さを計算
-            background_width = max_text_width + 20  # 余白を追加
-            background_height = sum(text_heights) + 20 + (len(spec_text_lines) - 1) * 10  # 行間の余白を追加
-
-            # 半透明の背景を描画
-            overlay_color = (0, 0, 0)  # 背景色（黒）
-            alpha = 0.5  # 半透明度
-            overlay_rect = self.overlay_image[overlay_y - 10:overlay_y + background_height - 10, overlay_x:overlay_x + background_width]
-            overlay_rect = cv2.addWeighted(overlay_rect, alpha, np.full_like(overlay_rect, overlay_color, dtype=np.uint8), 1 - alpha, 0)
-            self.overlay_image[overlay_y - 10:overlay_y + background_height - 10, overlay_x:overlay_x + background_width] = overlay_rect
-
-            # テキストを描画
-            for i, line in enumerate(spec_text_lines):
-                y_position = overlay_y + i * (text_heights[0] + 10)  # 行間の余白を追加
-                cv2.putText(self.overlay_image, line, (overlay_x, y_position), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), 2, cv2.LINE_AA)
-            # --- 静的な情報の描画ここまで ---
-
-        # フレームにオーバーレイ画像を合成 (ループ内)
-        cv2.addWeighted(self.overlay_image, 0.5, frame, 0.5, 0, frame)
-
-        # 動的に変化する情報は、ループ内で描画、OverlayDisplay の display_overlay メソッドを呼び出す
-        self.scanned_info = self.overlay_display.display_overlay(
-            frame, barcodes, self.scanned_info, self.scan_count, self.success_count,
-            self.failure_count, self.duplicate_count, self.location,
-            self.construction_number, remaining_time
+        # OverlayDisplay クラスの display_overlay メソッドを呼び出す
+        frame = self.overlay_display.display_overlay(
+            frame, barcodes, self.scan_count,
+            self.success_count, self.failure_count, self.duplicate_count,
+            self.location, self.construction_number, remaining_time,
+            self.config.get('barcode_type', '-'), self.config.get('expected_length', '-')
         )
+        return frame #フレームを返す
+    
+    def add_scanned_info(self, barcode_info, barcode_type):
+        timestamp = time.time()
+        self.overlay_display.scanned_info.append({
+            'barcode': barcode_info,
+            'type': barcode_type,
+            'timestamp': timestamp
+        })
 
     def get_current_timestamp(self):
         # ... (タイムスタンプ取得) ...
@@ -254,79 +223,3 @@ if __name__ == "__main__":
     construction_number = "_4656_"  # 単体起動用の初期値
     scanner = BarcodeScanner(config=config, location=location, construction_number=construction_number)
     scanner.start()
-
-def display_overlay(frame, barcodes, scanned_info, scan_count, success_count, failure_count, duplicate_count, config, location, construction_number, remaining_time):
-    height, width, _ = frame.shape
-    overlay_x = 10
-    overlay_y = 30
-
-    text_mapping = config.get("display_text_mapping", {})
-    display_location = text_mapping.get(location, location)  # location を display_text_mapping で変換
-    spec_text = f"Type: {config.get('barcode_type', '-')} | Digits: {config.get('expected_length', '-')} | Location: {display_location} | Construction: {construction_number}"
-
-    font_scale = config.get("font_scale", 0.6)
-    display_lines = config.get("display_lines", 1)
-
-    # テキストを改行で分割
-    spec_text_lines = spec_text.split(" | ")
-
-    # 各行の幅を計算し、最大幅を取得
-    max_text_width = 0
-    text_heights = []
-    for line in spec_text_lines:
-        text_size = cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 2)[0]
-        max_text_width = max(max_text_width, text_size[0])
-        text_heights.append(text_size[1])
-
-    # 背景の幅と高さを計算
-    background_width = max_text_width + 20  # 余白を追加
-    background_height = sum(text_heights) + 20 + (len(spec_text_lines) - 1) * 10  # 行間の余白を追加
-
-    # 半透明の背景を描画
-    overlay_color = (0, 0, 0)  # 背景色（黒）
-    alpha = 0.5  # 半透明度
-    overlay_rect = frame[overlay_y - 10:overlay_y + background_height - 10, overlay_x:overlay_x + background_width]
-    overlay_rect = cv2.addWeighted(overlay_rect, alpha, np.full_like(overlay_rect, overlay_color, dtype=np.uint8), 1 - alpha, 0)
-    frame[overlay_y - 10:overlay_y + background_height - 10, overlay_x:overlay_x + background_width] = overlay_rect
-
-    # テキストを描画
-    for i, line in enumerate(spec_text_lines):
-        y_position = overlay_y + i * (text_heights[0] + 10)  # 行間の余白を追加
-        cv2.putText(frame, line, (overlay_x, y_position), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), 2, cv2.LINE_AA)
-
-    # スキャンされたバーコードの総数を表示
-    scan_text = f"Scans: {scan_count}"
-    cv2.putText(frame, scan_text, (width - 200, height - 100), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
-
-    # 重複したスキャン数を表示
-    duplicate_text = f"Duplicates: {duplicate_count}"
-    cv2.putText(frame, duplicate_text, (width - 200, height - 75), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2, cv2.LINE_AA)
-
-    # 残り時間を表示
-    remaining_time_text = f"Time left: {int(remaining_time)}s"
-    cv2.putText(frame, remaining_time_text, (width - 200, height - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2, cv2.LINE_AA)
-
-    for info in scanned_info:
-        barcode_info = info['barcode']
-        barcode_type = info['type']
-        timestamp = info['timestamp']
-
-        if time.time() - timestamp <= config.get("display_time", 3):
-            text = f"{barcode_info} ({barcode_type})"
-            cv2.putText(frame, text, (overlay_x, overlay_y + display_lines * 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
-            overlay_y += 20
-
-        if time.time() - timestamp > config.get("display_time", 3):
-            scanned_info[:] = [info for info in scanned_info if time.time() - info['timestamp'] <= config.get("display_time", 3)]
-
-    for barcode in barcodes:
-        rect_points = barcode.polygon
-        if len(rect_points) == 4:
-            pts = np.array(rect_points, dtype=np.int32)
-            pts = pts.reshape((-1, 1, 2))
-            cv2.polylines(frame, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
-        else:
-            x, y, w, h = barcode.rect
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-    return scanned_info
