@@ -231,7 +231,12 @@ class BarcodeScanner:
 if __name__ == "__main__":
     print("\n単体起動中...")
     config = Config("config.json")
-    location = "_K1_"  # 単体起動用の初期値
-    construction_number = "_4656_"  # 単体起動用の初期値
+    standalone_display_time = 300
+    config.set("display_time", standalone_display_time)
+    print(f"\t display_time を {standalone_display_time} 秒に設定しました。")
+    location = "_K1_"
+    print(f"\t location を {location} に設定しました。")
+    construction_number = "_4656_"
+    print(f"\t construction_number を {construction_number} に設定しました。")
     scanner = BarcodeScanner(config=config, location=location, construction_number=construction_number)
     scanner.start()
