@@ -35,5 +35,19 @@
         "コンテナ": "Container",
         "棚": "Shelf",
         "棚（箱）": "Shelf (Box)"
-    }
+    },
+    "source_data_dir": "Source",
+    "default_source_csv_filename": "order_list.csv",
+    "source_csv_order_no_column": "発注伝票№",
+    "source_csv_drawing_no_column": "図番",
+    "source_csv_parts_no_column": "部品№",
+    "last_construction_number": "3804",
+    "last_source_csv_path": "C:/temp/KHT_Python/VerGemini/Source/3804s.csv",
+    "last_sort_start_index": "8",
+    "last_sort_length": "4",
+    "last_filter_start_value": "5",
+    "last_construction_number_scanner": "3804",
+    "no_barcode_current_id": "9999999997",
+    "manual_entry_drawing_barcode_type": "MANUAL",
+    "last_location_filter_viewer": "すべての場所"
 }

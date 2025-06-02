@@ -1,5 +1,7 @@
 # G_ScanBCD_main.py
 
+import sys
+import subprocess
 import os
 import tkinter as tk
 import json
@@ -83,6 +85,15 @@ def main():
     # show_results メソッドを呼び出し、スキャン結果を表示
     result_display.show_results(scanner.scan_count, location, construction_number)
 
+    # G_DrawingNumberViewer.py を起動
+    print("図面番号照合ツールを起動します...")
+    try:
+        # Pythonインタープリタ経由でスクリプトを実行
+        subprocess.Popen([sys.executable, "G_DrawingNumberViewer.py"])
+    except FileNotFoundError:
+        print("エラー: G_DrawingNumberViewer.py が見つからないか、Pythonインタープリタのパスに問題があります。")
+    except Exception as e:
+        print(f"図面番号照合ツールの起動中にエラーが発生しました: {e}")
 
 if __name__ == "__main__":
     main()

@@ -11,6 +11,8 @@ class CSVHandler:
         self.config = config
         self.barcode_type = config.get("barcode_type", "CODE39")
         self.expected_length = config.get("expected_length", 10)
+        self.no_barcode_type = config.get("no_barcode_type", "NO_BARCODE") # バーコードなし部品のタイプ
+        self.manual_drawing_barcode_type = config.get("manual_entry_drawing_barcode_type", "MANUAL_DRAWING") # 図番手動登録タイプ
         self.expected_columns = ["barcode_info", "construction_number", "location", "barcode_type", "timestamp"]  # 修正
 
     def load_csv(self):
@@ -45,16 +47,51 @@ class CSVHandler:
 
             barcode_info, construction_number, location, barcode_type, timestamp = row
 
-            if barcode_type != self.barcode_type:
+            # まず既知の特殊なタイプを処理
+            if barcode_type == self.no_barcode_type:
+                # バーコードなし部品の場合、アルファベットチェックはスキップ
+                if len(barcode_info) != self.expected_length:
+                    print(f"⚠ [{self.no_barcode_type}] 長さが異なります: {barcode_info} (期待値: {self.expected_length})")
+                    invalid_rows.append(row)
+                    continue
+            elif barcode_type == "MANUAL": # ManualEntryDialogからのエントリ
+                if len(barcode_info) != self.expected_length:
+                    print(f"⚠ [MANUAL] 長さが異なります: {barcode_info} (期待値: {self.expected_length})")
+                    invalid_rows.append(row)
+                    continue
+                # 発注伝票番号は、0埋めされていても数値であるべき
+                if any(char.isalpha() for char in barcode_info):
+                    print(f"⚠ [MANUAL] バーコードにアルファベットが含まれています: {barcode_info} (行: {row})")
+                    invalid_rows.append(row)
+                    continue
+            elif barcode_type == self.manual_drawing_barcode_type and barcode_type != "MANUAL":
+                # configからの従来の "MANUAL_DRAWING" タイプを処理 (もし "MANUAL" と異なり、
+                # かつ古いCSVファイルからの検証がまだ必要な場合)
+                if len(barcode_info) != self.expected_length:
+                    print(f"⚠ [{self.manual_drawing_barcode_type}] 長さが異なります: {barcode_info} (期待値: {self.expected_length})")
+                    invalid_rows.append(row)
+                    continue
+                if any(char.isalpha() for char in barcode_info):
+                    print(f"⚠ [{self.manual_drawing_barcode_type}] バーコードにアルファベットが含まれています: {barcode_info} (行: {row})")
+                    invalid_rows.append(row)
+                    continue
+            elif barcode_type == self.barcode_type: # 標準的なスキャンされたバーコード (例: CODE39)
+                if barcode_type != self.barcode_type:
+                    print(f"⚠ 想定外のバーコード種類: {barcode_type} (行: {row})")
+                    invalid_rows.append(row)
+                    continue
+                if len(barcode_info) != self.expected_length:
+                    print(f"⚠ バーコード長が異なります: {barcode_info} (期待値: {self.expected_length})")
+                    invalid_rows.append(row)
+                    continue
+                if any(char.isalpha() for char in barcode_info):
+                    print(f"⚠ バーコードにアルファベットが含まれています: {barcode_info} (行: {row})")
+                    invalid_rows.append(row)
+                    continue
+            else: # 既知/期待されるどのタイプでもない場合
                 print(f"⚠ 想定外のバーコード種類: {barcode_type} (行: {row})")
                 invalid_rows.append(row)
                 continue
-
-            if len(barcode_info) != self.expected_length:
-                print(f"⚠ バーコード長が異なります: {barcode_info} (期待値: {self.expected_length})")
-                invalid_rows.append(row)
-                continue
-
         return invalid_rows
 
     def find_duplicates(self):

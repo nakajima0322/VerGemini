@@ -19,7 +19,8 @@ class LocationSelector:
         self.config = config
 
         self.location =             self.config.get("default_location")
-        self.construction_number =  self.config.get("default_construction_number")
+        # 前回保存された工事番号を読み込む (なければconfigのデフォルト)
+        self.construction_number =  self.config.get("last_construction_number_scanner", self.config.get("default_construction_number"))
         self.csv_file =             self.config.get("csv_file")
         self.scan_log =             self.config.get("scan_log")
         self.barcode_type =         self.config.get("barcode_type")
@@ -49,6 +50,8 @@ class LocationSelector:
         input_value = construction_entry.get()
         self.construction_number = self._validate_construction_number(input_value)
         if self.construction_number:
+            # 選択された工事番号を保存
+            self.config.set("last_construction_number_scanner", self.construction_number)
             root.destroy()
 
     def _submit_location_by_entry(self, location_entry, construction_entry, root):
@@ -59,6 +62,8 @@ class LocationSelector:
             input_value = construction_entry.get()
             self.construction_number = self._validate_construction_number(input_value)
             if self.construction_number:
+                # 入力された工事番号を保存
+                self.config.set("last_construction_number_scanner", self.construction_number)
                 root.destroy()
         else:
             messagebox.showerror("エラー", "場所を入力してください")
