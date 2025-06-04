@@ -95,5 +95,15 @@ def main():
     except Exception as e:
         print(f"図面番号照合ツールの起動中にエラーが発生しました: {e}")
 
+    # G_PartInfoViewer.py を起動 (任意)
+    print("部品情報表示ツールを起動します...")
+    try:
+        # Pythonインタープリタ経由でスクリプトを実行
+        subprocess.Popen([sys.executable, "G_PartInfoViewer.py"])
+    except FileNotFoundError:
+        print("エラー: G_PartInfoViewer.py が見つからないか、Pythonインタープリタのパスに問題があります。")
+    except Exception as e:
+        print(f"部品情報表示ツールの起動中にエラーが発生しました: {e}")
+
 if __name__ == "__main__":
     main()

@@ -1,4 +1,4 @@
-﻿# c:\temp\KHT_Python\VerGemini\G_ManualEntryDialog.py
+# c:\temp\KHT_Python\VerGemini\G_ManualEntryDialog.py
 import tkinter as tk
 from tkinter import ttk, messagebox
 import csv

@@ -1,4 +1,4 @@
-﻿# G_ScanBCD_Analyzer.py
+# G_ScanBCD_Analyzer.py
 
 import cv2
 import numpy as np

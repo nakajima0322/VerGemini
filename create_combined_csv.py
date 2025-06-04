@@ -208,4 +208,9 @@ def create_combined_csv() -> None:
         print("処理対象のデータがなかったため、結果ファイルは作成されませんでした。")
 
 if __name__ == "__main__":
-    create_combined_csv()
+    try:
+        create_combined_csv()
+    except Exception as e:
+        print(f"create_combined_csv.py の実行中にエラーが発生しました: {e}")
+        # GUIがないので、ここではprintのみ
+    input("何かキーを押すと終了します...") # コンソールがすぐに閉じないように

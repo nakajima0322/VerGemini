@@ -1,4 +1,4 @@
-﻿# G_ScanBCD_CsvWriter.py
+# G_ScanBCD_CsvWriter.py
 
 import csv
 

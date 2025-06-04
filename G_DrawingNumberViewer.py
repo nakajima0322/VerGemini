@@ -41,18 +41,16 @@ class DrawingNumberViewer:
 
 
         # --- GUI要素の作成 ---
-        main_frame = ttk.Frame(root, padding="10")
+        main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         # 工事番号入力
         ttk.Label(main_frame, text="工事番号:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
         self.construction_no_entry = ttk.Entry(main_frame, width=20)
         self.construction_no_entry.grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW)
-        # 前回保存された工事番号を読み込む (なければconfigのデフォルト、それもなければ空)
         last_construction_no = self.config.get("last_construction_number", self.config.get("default_construction_number", ""))
         if last_construction_no:
             self.construction_no_entry.insert(0, last_construction_no)
-
 
         # 発注伝票CSV選択
         ttk.Label(main_frame, text="発注伝票CSV:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
@@ -61,26 +59,26 @@ class DrawingNumberViewer:
         self.browse_button = ttk.Button(main_frame, text="参照...", command=self.browse_source_csv)
         self.browse_button.grid(row=1, column=2, padx=5, pady=5)
 
-        # 図番キーフィルター
-        filter_frame = ttk.LabelFrame(main_frame, text="部品№フィルター")
+        # フィルター条件フレーム
+        filter_frame = ttk.LabelFrame(main_frame, text="フィルター条件")
         filter_frame.grid(row=2, column=0, columnspan=3, padx=5, pady=5, sticky=tk.EW)
 
-        ttk.Label(filter_frame, text="フィルター値 (例: 1 → #100, 10 → #1000, 空/0: 全表示):").grid(row=0, column=0, padx=5, pady=2, sticky=tk.W)
-        ttk.Label(filter_frame, text="#").grid(row=0, column=1, padx=(5,0), pady=2, sticky=tk.E) # "#"をEntryの左に
-        self.filter_start_entry = ttk.Entry(filter_frame, width=4, justify=tk.RIGHT) # 幅を4に、テキストを右寄せ
-        self.filter_start_entry.grid(row=0, column=2, padx=(0,0), pady=2, sticky=tk.W)
-        ttk.Label(filter_frame, text="00").grid(row=0, column=3, padx=(0,5), pady=2, sticky=tk.W) # "00"をEntryの右に
+        # 部品№フィルター (複数入力対応)
+        ttk.Label(filter_frame, text="部品№ (カンマ区切り可 例: 1,10 → #100,#1000 / 空,0: 全表示):").grid(row=0, column=0, padx=5, pady=2, sticky=tk.W)
+        self.filter_start_entry = ttk.Entry(filter_frame, width=20) # 幅を調整
+        self.filter_start_entry.grid(row=0, column=1, columnspan=2, padx=(0,5), pady=2, sticky=tk.EW) # columnspan調整
         last_filter_start = self.config.get("last_filter_start_value", str(self.default_filter_start_val))
         self.filter_start_entry.insert(0, last_filter_start)
 
-        ttk.Label(filter_frame, text="保管場所フィルター:").grid(row=1, column=0, padx=5, pady=2, sticky=tk.W)
-        self.location_filter_combo = ttk.Combobox(filter_frame, state="readonly", width=25)
-        self.location_filter_combo.grid(row=1, column=1, columnspan=3, padx=5, pady=2, sticky=tk.EW)
-        self.location_filter_combo['values'] = ["すべての場所"]
-        last_location_filter = self.config.get("last_location_filter_viewer", "すべての場所")
-        self.location_filter_combo.set(last_location_filter)
-        # フィルター入力要素を左に寄せるため、右側に伸縮する空カラムを追加
-        filter_frame.columnconfigure(4, weight=1)
+        # 保管場所フィルター (Listboxに変更、複数選択対応)
+        ttk.Label(filter_frame, text="保管場所 (複数選択可):").grid(row=1, column=0, padx=5, pady=2, sticky=tk.W)
+        self.location_filter_listbox = tk.Listbox(filter_frame, selectmode=tk.MULTIPLE, exportselection=False, height=4)
+        self.location_filter_listbox_scrollbar = ttk.Scrollbar(filter_frame, orient=tk.VERTICAL, command=self.location_filter_listbox.yview)
+        self.location_filter_listbox.configure(yscrollcommand=self.location_filter_listbox_scrollbar.set)
+        self.location_filter_listbox.grid(row=1, column=1, columnspan=2, padx=(0,0), pady=2, sticky=tk.EW)
+        self.location_filter_listbox_scrollbar.grid(row=1, column=3, padx=(0,5), pady=2, sticky=(tk.N, tk.S))
+
+        filter_frame.columnconfigure(1, weight=1) # フィルター入力欄が伸縮するように
 
         # 照合実行ボタン
         self.match_button = ttk.Button(main_frame, text="照合実行", command=self.perform_matching)
@@ -121,8 +119,8 @@ class DrawingNumberViewer:
         # ウィンドウリサイズ設定
         main_frame.columnconfigure(1, weight=1) # Entryウィジェットがリサイズされるように
         root.columnconfigure(0, weight=1)
-        root.rowconfigure(0, weight=1)
-        main_frame.rowconfigure(4, weight=1) # Treeviewの行がリサイズされるように (grid row変更のため)
+        self.root.rowconfigure(0, weight=1)
+        main_frame.rowconfigure(4, weight=1) # Treeviewの行がリサイズされるように
 
         # ウィンドウクローズ時の処理をバインド
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -138,12 +136,15 @@ class DrawingNumberViewer:
         current_construction_no = self.construction_no_entry.get()
         current_source_csv_path = self.source_csv_path.get()
         current_filter_start = self.filter_start_entry.get()
-        current_location_filter = self.location_filter_combo.get()
+
+        selected_location_indices = self.location_filter_listbox.curselection()
+        selected_locations = [self.location_filter_listbox.get(i) for i in selected_location_indices]
+        current_location_filter_str = ",".join(selected_locations) # カンマ区切りで保存
 
         self.config.set("last_construction_number", current_construction_no)
         self.config.set("last_source_csv_path", current_source_csv_path)
-        self.config.set("last_filter_start_value", current_filter_start if current_filter_start.isdigit() else str(self.default_filter_start_val))
-        self.config.set("last_location_filter_viewer", current_location_filter)
+        self.config.set("last_filter_start_value", current_filter_start if current_filter_start else str(self.default_filter_start_val))
+        self.config.set("last_location_filter_viewer", current_location_filter_str)
         self.config.save_config()
         self.root.destroy()
 
@@ -158,7 +159,7 @@ class DrawingNumberViewer:
         # フォーカス時に全選択
         self.construction_no_entry.bind("<FocusIn>", self._select_all_on_focus)
         self.source_csv_entry.bind("<FocusIn>", self._select_all_on_focus)
-        self.filter_start_entry.bind("<FocusIn>", self._select_all_on_focus)
+        self.filter_start_entry.bind("<FocusIn>", self._select_all_on_focus) # Listboxは対象外
 
         # Enterキーでのフォーカス移動とアクション
         self.construction_no_entry.bind("<Return>", lambda event: self.source_csv_entry.focus_set())
@@ -252,52 +253,63 @@ class DrawingNumberViewer:
             # load_scanned_data内でエラーメッセージ表示済み
             return # scanned_data_map が空なら処理終了
         
-        # 保管場所フィルターの選択肢を更新
+        # 保管場所フィルターの選択肢を更新 (Listbox用)
+        self.location_filter_listbox.delete(0, tk.END) # クリア
         unique_locations = sorted(list(set(info["location"] for info in scanned_data_map.values() if info.get("location"))))
-        current_selected_location = self.location_filter_combo.get()
-        self.location_filter_combo['values'] = ["すべての場所"] + unique_locations
-        if current_selected_location in self.location_filter_combo['values']:
-            self.location_filter_combo.set(current_selected_location)
-        else:
-            self.location_filter_combo.set("すべての場所") # 以前の値が無効ならデフォルトに
+        self.location_filter_listbox.insert(tk.END, "すべての場所") # 先頭に追加
+        for loc in unique_locations:
+            self.location_filter_listbox.insert(tk.END, loc)
 
-        selected_location_filter = self.location_filter_combo.get()
+        # 前回選択した保管場所を復元
+        last_location_filters_str = self.config.get("last_location_filter_viewer", "")
+        if last_location_filters_str:
+            last_locations = last_location_filters_str.split(',')
+            for i, item_in_listbox in enumerate(self.location_filter_listbox.get(0, tk.END)):
+                if item_in_listbox in last_locations:
+                    self.location_filter_listbox.selection_set(i)
+        elif self.location_filter_listbox.size() > 0: # 前回値がなければ「すべての場所」を選択状態にする
+            self.location_filter_listbox.selection_set(0)
 
         source_data_map = self.load_source_data(self.source_csv_path.get())
         if source_data_map is None:
             # load_source_data内でエラーメッセージ表示済み
             return
 
-        # フィルター値の取得と解釈
-        filter_input_str = self.filter_start_entry.get().strip() # 前後の空白を除去
-        
+        # 部品№フィルター値の取得と解釈 (複数対応)
+        filter_input_str = self.filter_start_entry.get().strip()
         apply_parts_no_filter = False
-        parts_no_filter_value = ""
+        parts_no_filter_values = [] # フィルター値のリスト
 
-        if not filter_input_str or filter_input_str == "0" or filter_input_str == "0000":
-            # No filter, apply_parts_no_filter remains False
-            pass
-        else:
-            try:
-                filter_base_input = int(filter_input_str)
-                if filter_base_input <= 0:
-                    # 0は上記のifで処理されるため、ここに来る場合は実質的に filter_base_input > 0 のはずだが念のため
-                    # ただし、ユーザーが "-1" などを入力した場合を考慮
-                    messagebox.showwarning("入力エラー", "フィルター値は1以上の整数で入力してください。\n空または0で全表示。")
-                    return
-
-                # ユーザー入力を基にフィルター値を生成 (例: 1 -> "#100", 10 -> "#1000")
-                parts_no_filter_value = f"#{filter_base_input}00"
+        if filter_input_str and filter_input_str != "0":
+            raw_filter_inputs = [val.strip() for val in filter_input_str.split(',')]
+            for val_str in raw_filter_inputs:
+                if not val_str: continue # 空の要素はスキップ
+                try:
+                    filter_base_input = int(val_str)
+                    if filter_base_input > 0:
+                        # ユーザー入力を基にフィルター値を生成 (例: 1 -> "#100", 10 -> "#1000")
+                        parts_no_filter_values.append(f"#{filter_base_input}00")
+                    # 0以下の入力は無視 (またはエラー表示)
+                except ValueError:
+                    messagebox.showwarning("入力エラー", f"部品№フィルターの '{val_str}' は数字で入力してください。")
+                    return # エラーがあれば処理中断
+            if parts_no_filter_values:
                 apply_parts_no_filter = True
-            except ValueError:
-                messagebox.showwarning("入力エラー", "フィルター値は数字で入力してください (例: 1)。\n空または0で全表示。")
-                return
+
+        # 保管場所フィルター値の取得 (複数対応)
+        selected_location_indices = self.location_filter_listbox.curselection()
+        selected_locations_from_listbox = [self.location_filter_listbox.get(i) for i in selected_location_indices]
+        
+        passes_all_locations = False # Trueなら場所フィルターを適用しない
+        if not selected_location_indices: # 何も選択されていない場合
+            passes_all_locations = True
+        elif "すべての場所" in selected_locations_from_listbox: # 「すべての場所」が選択されていれば他は無視
+            passes_all_locations = True
 
         all_results_before_filter = [] # リストの初期化
         for bc, scanned_location_info in scanned_data_map.items():
             scanned_location = scanned_location_info.get("location", "---")
             scanned_type = scanned_location_info.get("type", "")
-
             normalized_scanned_bc = bc.lstrip('0')
             source_info = source_data_map.get(normalized_scanned_bc)
             location_to_display = scanned_location if scanned_location else "---"
@@ -339,31 +351,35 @@ class DrawingNumberViewer:
 
             all_results_before_filter.append((bc, normalized_scanned_bc, parts_no_to_display, drawing_no_to_display, key_segment_for_display, status_to_display, location_to_display))
 
-        # 実際に表示する結果リスト (フィルター後)
         results_to_display = []
         for item_data in all_results_before_filter:
-            status = item_data[5] # status は6番目の要素
-            item_location = item_data[6] # location は7番目の要素
-            passes_filter = False
+            item_status = item_data[5]
+            item_location = item_data[6]
+            item_parts_no = item_data[2]
 
-            # まず場所フィルターをチェック
-            if selected_location_filter == "すべての場所" or item_location == selected_location_filter:
-                if status == "OK": # "OK" の場合のみ部品№フィルターを適用
-                    if apply_parts_no_filter:
-                        parts_no_val = item_data[2] # 部品№は3番目の要素
-                        if parts_no_val == parts_no_filter_value: # 完全一致で比較
-                            passes_filter = True
-                    else: # 部品№フィルター無効 (全表示)
-                        passes_filter = True
-                    
-                    if passes_filter:
+            # 1. 保管場所フィルター
+            passes_location_filter = False
+            if passes_all_locations: # 「すべての場所」が選択されているか、何も選択されていない
+                passes_location_filter = True
+            elif item_location in selected_locations_from_listbox: # 特定の場所が選択されていて、アイテムの場所が一致
+                passes_location_filter = True
+            
+            if not passes_location_filter:
+                continue
+
+            # 2. 部品№フィルター
+            if item_status == "OK" or item_status == "手動登録 (図番)":
+                if apply_parts_no_filter:
+                    if item_parts_no in parts_no_filter_values: # 複数指定のOR条件
                         results_to_display.append(item_data)
-                elif status.startswith("該当なし") or status == "手動登録 (図番)": # 「該当なし」系と「手動登録」は場所フィルター後、部品№フィルターに関わらず表示
-                    passes_filter = True
+                else: # 部品№フィルターが適用されていない場合は表示
                     results_to_display.append(item_data)
+            elif item_status.startswith("該当なし"): # 「該当なし」系は部品№フィルターに関わらず表示
+                results_to_display.append(item_data)
 
         if not results_to_display:
             messagebox.showinfo("情報", "照合可能なスキャンデータがありませんでした。")
+            self.data_count_label.config(text="表示データ数: 0 件")
             return
 
         def sort_key_func(item):
@@ -371,8 +387,8 @@ class DrawingNumberViewer:
             if drawing_no_str and isinstance(drawing_no_str, str) and \
                len(drawing_no_str) >= (self.key_extract_start_0based + self.key_extract_length):
                 try:
-                    sort_val_str = drawing_no_str[self.key_extract_start_0based : self.key_extract_start_0based + self.key_extract_length]
-                    return int(sort_val_str)
+                    sort_val_str = drawing_no_str[self.key_extract_start_0based : self.key_extract_start_0based + self.key_extract_length]                    
+                    return int(sort_val_str) # 数値としてソート
                 except ValueError:
                     return float('inf')
             return float('inf')
@@ -384,10 +400,13 @@ class DrawingNumberViewer:
         self.data_count_label.config(text=f"表示データ数: {len(sorted_results)} 件")
 
 if __name__ == "__main__":
-    # 設定ファイルのロード
-    # G_ScanBCD_main.py と同様の config.json を想定
-    config_instance = Config("config.json")
+    try:
+        # 設定ファイルのロード
+        config_instance = Config("config.json")
 
-    app_root = tk.Tk()
-    viewer = DrawingNumberViewer(app_root, config_instance)
-    app_root.mainloop()
+        app_root = tk.Tk()
+        viewer = DrawingNumberViewer(app_root, config_instance)
+        app_root.mainloop()
+    except Exception as e:
+        print(f"G_DrawingNumberViewer の起動中にエラーが発生しました: {e}")
+        messagebox.showerror("起動エラー", f"図面番号照合ツールの起動に失敗しました。\n{e}")

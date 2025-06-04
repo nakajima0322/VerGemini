@@ -1,4 +1,4 @@
-﻿# G_ScanBCD_Overlay.py
+# G_ScanBCD_Overlay.py
 import cv2
 import time
 import numpy as np

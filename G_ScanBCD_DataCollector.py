@@ -1,4 +1,4 @@
-﻿# G_ScanBCD_DataCollector.py
+# G_ScanBCD_DataCollector.py
 # データ収集クラス
 class G_ScanBCD_DataCollector:
     def collect(self, barcode_info, barcode_type, timestamp, location, construction_number):

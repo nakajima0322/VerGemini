@@ -1,4 +1,4 @@
-﻿# G_ScanBCD_Results.py
+# G_ScanBCD_Results.py
 import tkinter as tk
 
 class ResultDisplay:
