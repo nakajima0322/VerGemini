@@ -19,6 +19,8 @@ class OverlayDisplay:
     def __init__(self, config):
         self.config = config
         self.scanned_info = []  # scanned_infoをインスタンス変数として保持
+        self.last_seen = {}  # バーコードの最終検出時間と位置を記録
+        self.detection_timeout = 1.0  # 検出が途切れてから矩形を消すまでの時間
 
         missing_keys = []
         for key in self.REQUIRED_KEYS:
@@ -109,14 +111,51 @@ class OverlayDisplay:
             if time.time() - timestamp > self.config.get("display_time"):
                 self.scanned_info[:] = [info for info in self.scanned_info if time.time() - info['timestamp'] <= self.config.get("display_time")]
 
-        for barcode in barcodes:
-            rect_points = barcode.polygon
-            if len(rect_points) == 4:
-                pts = np.array(rect_points, dtype=np.int32)
-                pts = pts.reshape((-1, 1, 2))
-                cv2.polylines(frame, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
-            else:
-                x, y, w, h = barcode.rect
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        # --- バーコードの矩形と情報の描画 --- 
+        current_time = time.time()
 
-        return frame  # frameを返すように変更
+        # 現フレームで検出されたバーコードでlast_seenを更新
+        for barcode in barcodes:
+            barcode_info_str = barcode.data.decode('utf-8')
+            self.last_seen[barcode_info_str] = {'barcode': barcode, 'timestamp': current_time}
+
+        # last_seenにあるバーコードを描画（色分けしつつ）
+        to_remove = []
+        for barcode_info, seen_data in self.last_seen.items():
+            elapsed_time = current_time - seen_data['timestamp']
+
+            if elapsed_time > self.detection_timeout:
+                to_remove.append(barcode_info)
+                continue
+
+            # 時間経過で色を決定
+            if elapsed_time < 0.2:
+                color = (0, 255, 0)  # 緑
+            elif elapsed_time < 0.5:
+                color = (0, 255, 255) # 黄
+            else:
+                color = (0, 0, 255)  # 赤
+
+            barcode_obj = seen_data['barcode']
+            
+            # 矩形を描画
+            rect_points = barcode_obj.polygon
+            if len(rect_points) == 4:
+                pts = np.array(rect_points, dtype=np.int32).reshape((-1, 1, 2))
+            else:
+                x, y, w, h = barcode_obj.rect
+                pts = np.array([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], dtype=np.int32).reshape((-1, 1, 2))
+            
+            cv2.polylines(frame, [pts], isClosed=True, color=color, thickness=2)
+
+            # テキストを描画
+            text = f"{barcode_info} ({barcode_obj.type})"
+            (text_w, text_h), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
+            cv2.rectangle(frame, (pts[0][0][0], pts[0][0][1] - text_h - 15), (pts[0][0][0] + text_w, pts[0][0][1] - 10), color, -1)
+            cv2.putText(frame, text, (pts[0][0][0], pts[0][0][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,0), 1, cv2.LINE_AA)
+
+        # タイムアウトしたバーコードを辞書から削除
+        for key in to_remove:
+            del self.last_seen[key]
+
+        return frame

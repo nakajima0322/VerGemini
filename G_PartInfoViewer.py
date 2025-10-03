@@ -6,7 +6,6 @@ import os
 import sys
 import cv2 # OpenCVのインポート
 import time # target_fps制御用
-import numpy as np # OpenCVで必要になる場合がある
 from G_config import Config # 既存のConfigクラスを利用
 from G_ScanBCD_Analyzer import G_ScanBCD_Analyzer # バーコード解析用
 

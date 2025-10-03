@@ -6,6 +6,7 @@ import cv2
 import time
 import os
 import csv
+import json
 from datetime                   import datetime
 import logging
 from logging.handlers           import RotatingFileHandler
@@ -17,7 +18,6 @@ from G_config import Config
 from G_ScanBCD_Analyzer         import G_ScanBCD_Analyzer
 from G_ScanBCD_DataCollector    import G_ScanBCD_DataCollector
 from G_ScanBCD_CsvWriter        import G_ScanBCD_CsvWriter
-from G_ScanBCD_FixCSV           import CSVHandler
 from G_ManualEntryDialog        import ManualEntryDialog # 新しいダイアログをインポート
 from G_ScanBCD_Overlay          import OverlayDisplay
 
@@ -61,7 +61,7 @@ class BarcodeScanner:
         self.idle_timeout =     self.config.get("idle_timeout")
         # バーコードなし部品用設定
         self.no_barcode_type = self.config.get("no_barcode_type", "NO_BARCODE")
-        self.no_barcode_current_id_str = self.config.get("no_barcode_current_id", "9999999999")
+        self.no_barcode_prefix = self.config.get("no_barcode_prefix", "99") # 固定プレフィックス
         self.manual_drawing_barcode_type = self.config.get("manual_entry_drawing_barcode_type", "MANUAL_DRAWING") # 新しいタイプ
 
 
@@ -119,24 +119,40 @@ class BarcodeScanner:
             os.makedirs(self.log_dir)
 
     def _generate_no_barcode_id(self):
-        """バーコードなし部品用の代替IDを生成し、configを更新する"""
-        try:
-            current_id_num = int(self.no_barcode_current_id_str)
-        except ValueError:
-            print(f"⚠ 設定ファイル内の no_barcode_current_id ({self.no_barcode_current_id_str}) が不正な数値です。")
-            # エラー発生時はデフォルトの開始IDを使用するなどのフォールバック処理も検討可能
-            current_id_num = int(self.config.get("no_barcode_start_id", "9999999999"))
+        """
+        バーコードなし部品用の代替IDを生成し、専用のシーケンスファイルに状態を保存する。
+        形式: 固定プレフィックス(2桁) + 工事番号(4桁) + 連番(4桁)
+        """
+        sequence_file = os.path.join(self.config.get("data_dir", "data"), "sequences.json")
+        sequences = {}
+        
+        # シーケンスファイルが存在すれば読み込む
+        if os.path.exists(sequence_file):
+            with open(sequence_file, 'r', encoding='utf-8') as f:
+                try:
+                    sequences = json.load(f)
+                except json.JSONDecodeError:
+                    print(f"⚠ シーケンスファイル {sequence_file} が破損しています。新しいファイルを作成します。")
+                    sequences = {}
 
-        new_id_num = current_id_num
-        # 既存のバーコードデータと重複しないかチェック (簡易的なもの)
-        # より厳密には、払い出し済みのIDリストを管理する必要がある
-        while str(new_id_num).zfill(self.expected_length) in self.barcode_data:
-            new_id_num -= 1
-
-        new_id_str = str(new_id_num).zfill(self.expected_length)
-        self.no_barcode_current_id_str = str(new_id_num -1) # 次のIDのためにデクリメントして保持
-        self.config.set("no_barcode_current_id", self.no_barcode_current_id_str)
-        return new_id_str
+        # 現在の工事番号の次のシーケンス番号を取得 (存在しなければ1から)
+        current_construction_no = self.construction_number
+        next_seq = sequences.get(current_construction_no, 1)
+        
+        # 4桁のゼロ埋め文字列にフォーマット
+        seq_str = str(next_seq).zfill(4)
+        
+        # 新しいIDを生成
+        new_id = f"{self.no_barcode_prefix}{current_construction_no}{seq_str}"
+        
+        # シーケンス番号を更新
+        sequences[current_construction_no] = next_seq + 1
+        
+        # シーケンスファイルを更新
+        with open(sequence_file, 'w', encoding='utf-8') as f:
+            json.dump(sequences, f, indent=4, ensure_ascii=False)
+            
+        return new_id
 
     def _register_no_barcode_item(self):
         """バーコードなし部品を手動で登録する"""
@@ -152,15 +168,9 @@ class BarcodeScanner:
             self.logger.info("手動登録: %s", data)
             print(f"Manually Registered: {barcode_info} Type: {barcode_type}")
 
-            if __name__ != "__main__":
-                with open(self.csv_file, mode='a', newline='', encoding='utf-8') as file:
-                    writer = csv.writer(file)
-                    writer.writerow(data.values())
-            elif __name__ == "__main__": # 単体起動時
-                # 単体起動時の data_writer がグローバルスコープにないため、ここで開閉する
-                with open(self.csv_file, mode='a', newline='', encoding='utf-8') as file:
-                    writer = csv.writer(file)
-                    writer.writerow(data.values())
+            with open(self.csv_file, mode='a', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                writer.writerow(data.values())
 
             self.add_scanned_info(barcode_info, barcode_type)
             self.last_scan_time = time.time() # アイドルタイムリセット
@@ -256,17 +266,10 @@ class BarcodeScanner:
                         self.logger.info("スキャン結果: %s", data)
                         print(f"Scanned Barcode: {barcode_info} Type: {barcode_type}")
 
-                        # {construction_number}.csv への出力（単体起動時以外）
-                        if __name__ != "__main__":
-                            with open(self.csv_file, mode='a', newline='', encoding='utf-8') as file:
-                                writer = csv.writer(file)
-                                writer.writerow(data.values())
-
-                        # data.csv への出力（単体起動時のみ）
-                        if __name__ == "__main__":
-                            with open(self.csv_file, mode='a', newline='', encoding='utf-8') as file: # 追記モード
-                                writer = csv.writer(file)
-                                writer.writerow(data.values())
+                        # CSVファイルへの書き込み
+                        with open(self.csv_file, mode='a', newline='', encoding='utf-8') as file:
+                            writer = csv.writer(file)
+                            writer.writerow(data.values())
 
                         #scanned_infoへの追加
                         self.add_scanned_info(barcode_info, barcode_type)
@@ -306,14 +309,10 @@ class BarcodeScanner:
         cap.release()
         cv2.destroyAllWindows()
 
-        # CSV 重複削除処理の追加（単体起動時以外）
-        if __name__ != "__main__":
-            handler = CSVHandler(self.csv_file, self.config)
-            handler.find_duplicates()
-        
         # もし作成されていれば、非表示のTkinterルートをクリーンアップ
         if self._tk_dialog_parent_window and self._tk_dialog_parent_window.winfo_exists():
             self._tk_dialog_parent_window.destroy()
+        print("バーコードスキャナーのメインループを終了しました。")
 
     def display_scan_result(self, frame, barcodes, remaining_time):
         # OverlayDisplay クラスの display_overlay メソッドを呼び出す

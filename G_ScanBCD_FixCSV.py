@@ -1,9 +1,8 @@
 # G_ScanBCD_FixCSV.py
 
-import os
 import csv
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk  # 追加
+from tkinter import filedialog, ttk  # 追加
 
 class CSVHandler:
     def __init__(self, csv_file, config):

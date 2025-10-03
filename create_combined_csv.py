@@ -1,6 +1,6 @@
 ﻿import csv
 import os
-from typing import List, Dict, Any # AnyをDictに変更検討
+from typing import List, Dict # AnyをDictに変更検討
 from G_config import Config  # G_config.py が同じディレクトリかPYTHONPATHにある前提
 
 def _normalize_id_string(id_str: str) -> str:
@@ -108,7 +108,7 @@ def create_combined_csv() -> None:
     try:
         config = Config("config.json") # config.jsonがカレントディレクトリにある想定
     except FileNotFoundError:
-        print(f"エラー: 設定ファイル 'config.json' がカレントディレクトリに見つかりません。")
+        print("エラー: 設定ファイル 'config.json' がカレントディレクトリに見つかりません。")
         return
     except Exception as e:
         print(f"エラー: config.json の読み込みに失敗しました: {e}")
@@ -213,4 +213,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"create_combined_csv.py の実行中にエラーが発生しました: {e}")
         # GUIがないので、ここではprintのみ
+    print("結合CSV作成処理を終了します。")
     input("何かキーを押すと終了します...") # コンソールがすぐに閉じないように

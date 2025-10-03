@@ -19,8 +19,8 @@ class LauncherApp:
         scan_button.pack(pady=10)
 
         # --- 図面番号照合 ---
-        drawing_viewer_button = ttk.Button(main_frame, text="図面番号照合ツール起動", command=self._run_drawing_number_viewer, width=30)
-        drawing_viewer_button.pack(pady=10)
+        location_viewer_button = ttk.Button(main_frame, text="保管場所照合ツール起動", command=self._run_location_viewer, width=30)
+        location_viewer_button.pack(pady=10)
 
         # --- 部品情報表示 ---
         part_info_frame = ttk.LabelFrame(main_frame, text="部品情報表示ツール")
@@ -44,8 +44,11 @@ class LauncherApp:
         combine_csv_button.pack(pady=10)
 
         # --- 終了ボタン ---
-        exit_button = ttk.Button(main_frame, text="終了", command=self.root.quit, width=30)
+        exit_button = ttk.Button(main_frame, text="終了", command=self._on_closing, width=30)
         exit_button.pack(pady=15)
+
+        # ウィンドウクローズ時の処理
+        self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
 
     def _check_file_exists(self, script_name):
         if not os.path.exists(script_name):
@@ -71,8 +74,8 @@ class LauncherApp:
     def _run_scan_bcd_main(self):
         self._run_script("G_ScanBCD_main.py")
 
-    def _run_drawing_number_viewer(self):
-        self._run_script("G_DrawingNumberViewer.py")
+    def _run_location_viewer(self): # メソッド名も変更
+        self._run_script("G_DrawingNumberViewer.py") # 起動するファイル名は G_DrawingNumberViewer.py のまま
 
     def _run_part_info_viewer(self):
         cn = self.part_info_cn_entry.get().strip()
@@ -93,6 +96,11 @@ class LauncherApp:
 
     def _run_create_combined_csv(self):
         self._run_script("create_combined_csv.py")
+
+    def _on_closing(self):
+        print("KHTツールランチャーを終了します。")
+        self.root.quit()
+
 
 if __name__ == "__main__":
     root = tk.Tk()

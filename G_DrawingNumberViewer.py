@@ -1,4 +1,4 @@
-﻿# G_DrawingNumberViewer.py
+# G_DrawingNumberViewer.py
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -10,7 +10,7 @@ class DrawingNumberViewer:
     def __init__(self, root, config):
         self.root = root
         self.config = config
-        self.root.title("図面番号照合ツール")
+        self.root.title("保管場所照合ツール")
 
         # 設定値の取得
         self.data_dir = self.config.get("data_dir", "data")
@@ -146,6 +146,7 @@ class DrawingNumberViewer:
         self.config.set("last_filter_start_value", current_filter_start if current_filter_start else str(self.default_filter_start_val))
         self.config.set("last_location_filter_viewer", current_location_filter_str)
         self.config.save_config()
+        print("保管場所照合ツールを終了します。")
         self.root.destroy()
 
     def _select_all_on_focus(self, event):
@@ -283,7 +284,8 @@ class DrawingNumberViewer:
         if filter_input_str and filter_input_str != "0":
             raw_filter_inputs = [val.strip() for val in filter_input_str.split(',')]
             for val_str in raw_filter_inputs:
-                if not val_str: continue # 空の要素はスキップ
+                if not val_str:
+                    continue # 空の要素はスキップ
                 try:
                     filter_base_input = int(val_str)
                     if filter_base_input > 0:

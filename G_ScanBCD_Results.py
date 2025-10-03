@@ -39,7 +39,7 @@ class ResultDisplay:
 
 		# ウィンドウの位置を画面の右寄せで表示
 		screen_width = root.winfo_screenwidth()
-		screen_height = root.winfo_screenheight()
+		# screen_height = root.winfo_screenheight() # 未使用のため削除
 		x = screen_width - window_width - 10  # 右端から10ピクセル内側
 		y = 10  # 上端から10ピクセル下
 		root.geometry(f"{window_width}x{window_height}+{x}+{y}")

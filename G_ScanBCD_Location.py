@@ -95,7 +95,7 @@ class LocationSelector:
         # ボタンで選択する方法
         location_buttons = []  # ボタンを格納するリスト
         for loc in locations:
-            button = tk.Button(root, text=loc, font=("Arial", 10), command=lambda l=loc: self._select_location_by_button(l, construction_entry, root), width=10)
+            button = tk.Button(root, text=loc, font=("Arial", 10), command=lambda location_name=loc: self._select_location_by_button(location_name, construction_entry, root), width=10)
             button.pack(pady=2)
             location_buttons.append(button)  # ボタンをリストに追加
 
@@ -111,13 +111,13 @@ class LocationSelector:
         submit_button = tk.Button(root, text="入力を確定", font=("Arial", 10), command=lambda: self._submit_location_by_entry(location_entry, construction_entry, root))
         submit_button.pack(pady=5)
 
-        # 設定情報の表示
+        # 設定情報の表示 (未使用の csv_file 変数を削除し、直接 config から取得)
         csv_file = self.config.get("csv_file", "data.csv")
         scan_log = self.config.get("scan_log", "scanned_barcodes.csv")
         barcode_type = self.config.get("barcode_type", "CODE39")
         expected_length = self.config.get("expected_length", 10)
 
-        info_text = f"DATA: \tScanBCD.dat\nLOG: \t{scan_log}\nTYPE: \t{barcode_type}\nDIGIT: \t{expected_length} 桁"
+        info_text = f"DATA: \t{csv_file}\nLOG: \t{scan_log}\nTYPE: \t{barcode_type}\nDIGIT: \t{expected_length} 桁"
         tk.Label(root, text="\n【設定情報】", font=("Arial", 10), fg="gray").pack()
         tk.Label(root, text=info_text, font=("Arial", 10), fg="gray", justify="left").pack(padx=10)
 
@@ -129,8 +129,8 @@ class LocationSelector:
 
         # ウィンドウの位置を画面の右端に設定
         screen_width = root.winfo_screenwidth()
-        screen_height = root.winfo_screenheight()
-        window_width = root.winfo_reqwidth() + extra_width
+        # screen_height = root.winfo_screenheight() # 未使用のため削除
+        window_width = root.winfo_reqwidth() + extra_width # screen_height は未使用なので削除
         window_height = root.winfo_reqheight() + extra_height
         x = screen_width - window_width - 10  # 右端から10ピクセル内側
         y = 10  # 上端から10ピクセル下
