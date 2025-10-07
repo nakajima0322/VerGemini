@@ -72,6 +72,19 @@ class LocationSelector:
         root = tk.Tk()
         root.title("場所情報の選択")
 
+        # --- Cancellation Handling ---
+        def on_cancel(event=None):
+            """Handles window closing via Escape key or 'X' button."""
+            self.location = None  # Explicitly signal cancellation
+            self.construction_number = None
+            root.destroy()
+
+        # Bind Escape key to the cancel function
+        root.bind("<Escape>", on_cancel)
+
+        # Bind the window's close button ('X') to the cancel function
+        root.protocol("WM_DELETE_WINDOW", on_cancel)
+
         # ウィジェットの作成
         # 工事番号入力欄
         tk.Label(root, text="工事番号（4桁の数字・確認用）", font=("Arial", 10)).pack(pady=(10,2))

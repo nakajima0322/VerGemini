@@ -927,3 +927,13 @@
 2025-10-03 11:57:01,417 - INFO - スキャン結果: {'barcode_info': '0000322801', 'construction_number': '9999', 'location': 'カブト1F', 'barcode_type': 'CODE39', 'timestamp': '2025-10-03 11:57:01'}
 2025-10-03 11:57:13,124 - INFO - スキャン結果: {'barcode_info': '0000322798', 'construction_number': '9999', 'location': 'カブト1F', 'barcode_type': 'CODE39', 'timestamp': '2025-10-03 11:57:13'}
 2025-10-03 11:57:14,422 - INFO - スキャン結果: {'barcode_info': '0000322797', 'construction_number': '9999', 'location': 'カブト1F', 'barcode_type': 'CODE39', 'timestamp': '2025-10-03 11:57:14'}
+2025-10-06 16:01:04,962 - INFO - 手動登録: {'barcode_info': '9999990064', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'NO_BARCODE', 'timestamp': '2025-10-06 16:01:04'}
+2025-10-06 16:01:05,316 - INFO - 手動登録: {'barcode_info': '9999990065', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'NO_BARCODE', 'timestamp': '2025-10-06 16:01:05'}
+2025-10-06 16:01:05,352 - INFO - 手動登録: {'barcode_info': '9999990066', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'NO_BARCODE', 'timestamp': '2025-10-06 16:01:05'}
+2025-10-06 16:01:05,436 - INFO - 手動登録: {'barcode_info': '9999990067', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'NO_BARCODE', 'timestamp': '2025-10-06 16:01:05'}
+2025-10-06 16:01:05,572 - INFO - 手動登録: {'barcode_info': '9999990068', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'NO_BARCODE', 'timestamp': '2025-10-06 16:01:05'}
+2025-10-06 16:01:05,786 - INFO - 手動登録: {'barcode_info': '9999990069', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'NO_BARCODE', 'timestamp': '2025-10-06 16:01:05'}
+2025-10-06 16:01:05,960 - INFO - 手動登録: {'barcode_info': '9999990070', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'NO_BARCODE', 'timestamp': '2025-10-06 16:01:05'}
+2025-10-06 16:01:06,191 - INFO - 手動登録: {'barcode_info': '9999990071', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'NO_BARCODE', 'timestamp': '2025-10-06 16:01:06'}
+2025-10-06 16:01:06,383 - INFO - 手動登録: {'barcode_info': '9999990072', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'NO_BARCODE', 'timestamp': '2025-10-06 16:01:06'}
+2025-10-06 16:01:06,580 - INFO - 手動登録: {'barcode_info': '9999990073', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'NO_BARCODE', 'timestamp': '2025-10-06 16:01:06'}
