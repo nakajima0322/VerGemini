@@ -41,17 +41,15 @@
     "source_csv_parts_no_column": "部品№",
     "source_csv_supplier_column": "仕入先",
     "target_fps": 30,
-
     "___STATE_AND_HISTORY___": "--- 前回終了時の状態（自動更新） ---",
     "last_construction_no_part_viewer": "",
     "last_construction_number": "3804",
     "last_construction_number_scanner": "9999",
     "last_filter_start_value": "0",
-    "last_location_filter_viewer": "",
+    "last_location_filter_viewer": "すべての場所",
     "last_sort_length": "4",
     "last_sort_start_index": "8",
     "last_source_csv_path": "C:/temp/KHT_Python/VerGemini/Source/3804s.csv",
-
     "___UNUSED_OR_DEPRECATED___": "--- 未使用または旧式の項目 ---",
     "barcode_data": [],
     "construction_number": null,

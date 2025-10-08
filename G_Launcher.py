@@ -9,7 +9,7 @@ class LauncherApp:
     def __init__(self, root):
         self.root = root
         self.root.title("KHTツールランチャー")
-        self.root.geometry("400x350") # 少し大きめに
+        self.root.geometry("400x400") # 高さを調整
 
         main_frame = ttk.Frame(self.root, padding="20")
         main_frame.pack(expand=True, fill=tk.BOTH)
@@ -39,13 +39,20 @@ class LauncherApp:
 
         part_info_frame.columnconfigure(1, weight=1)
 
+        # --- ユーティリティセパレータ ---
+        ttk.Separator(main_frame, orient='horizontal').pack(fill='x', pady=10, after=part_info_frame)
+
         # --- 結合CSV作成 ---
         combine_csv_button = ttk.Button(main_frame, text="結合CSV作成", command=self._run_create_combined_csv, width=30)
-        combine_csv_button.pack(pady=10)
+        combine_csv_button.pack(pady=5)
+
+        # --- 設定編集 ---
+        config_editor_button = ttk.Button(main_frame, text="設定編集", command=self._run_config_editor, width=30)
+        config_editor_button.pack(pady=5)
 
         # --- 終了ボタン ---
         exit_button = ttk.Button(main_frame, text="終了", command=self._on_closing, width=30)
-        exit_button.pack(pady=15)
+        exit_button.pack(side="bottom", pady=10)
 
         # ウィンドウクローズ時の処理
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
@@ -96,6 +103,9 @@ class LauncherApp:
 
     def _run_create_combined_csv(self):
         self._run_script("create_combined_csv.py")
+
+    def _run_config_editor(self):
+        self._run_script("G_ConfigEditor.py")
 
     def _on_closing(self):
         print("KHTツールランチャーを終了します。")
