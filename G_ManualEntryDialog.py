@@ -19,6 +19,7 @@ class ManualEntryDialog(tk.Toplevel):
         self.title("図番による手動登録")
         self.geometry("700x450") # 少し広めに
         self.protocol("WM_DELETE_WINDOW", self._on_cancel)
+        self.bind('<Escape>', lambda e: self._on_cancel())
 
         self.result = None # 選択された部品情報
 

@@ -296,7 +296,7 @@ class BarcodeScanner:
                 break
 
             key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
+            if key == ord('q') or key == 27: # qキーまたはESCキー
                 print("スキャナー停止")
                 break
             elif key == ord('n'): # 'N'キーでバーコードなし部品を登録

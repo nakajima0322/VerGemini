@@ -46,14 +46,14 @@
     "last_construction_number": "3804",
     "last_construction_number_scanner": "9999",
     "last_filter_start_value": "0",
-    "last_location_filter_viewer": "コンテナ",
+    "last_location_filter_viewer": "すべての場所",
     "last_sort_length": "4",
     "last_sort_start_index": "8",
     "last_source_csv_path": "C:/temp/KHT_Python/VerGemini/Source/3804s.csv",
     "___WINDOW_GEOMETRIES___": "--- ウィンドウの位置とサイズ（自動更新） ---",
     "window_geometries": {
-        "PartInfoViewer": "1340x650+10+10",
-        "DrawingNumberViewer": "853x600+283+84",
+        "PartInfoViewer": "1339x650+6+10",
+        "DrawingNumberViewer": "800x600+283+84",
         "WorkflowManager": "800x600+283+84"
     },
     "___UNUSED_OR_DEPRECATED___": "--- 未使用または旧式の項目 ---",

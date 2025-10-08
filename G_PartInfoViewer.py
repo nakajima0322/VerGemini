@@ -83,26 +83,12 @@ class PartInfoViewer:
             self.barcode_entry.insert(0, initial_barcode_value)
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
+        self.root.bind('<Escape>', lambda e: self._on_closing())
         if initial_construction_no and initial_barcode_value:
             self.root.after(100, self._on_search) # 少し遅延させて自動検索
             
-        self._center_and_right_align_window(self.root) # ウィンドウを右寄せ
-        self.root.state("zoomed") # ウィンドウを最大化
+        self._restore_geometry() # ウィンドウジオメトリの復元
         self.construction_no_entry.focus_set()
-
-    def _center_and_right_align_window(self, window, window_width_offset=0, window_height_offset=0):
-        """ウィンドウを画面の右端に寄せて表示する"""
-        window.update_idletasks() # ウィンドウサイズを確定させる
-        width = window.winfo_width() + window_width_offset
-        height = window.winfo_height() + window_height_offset
-        
-        # 画面サイズを取得 (より正確にはtkinterのscreenwidth/heightを使う)
-        screen_width = window.winfo_screenwidth() # プライマリスクリーンの幅
-        # screen_height = window.winfo_screenheight() # プライマリスクリーンの高さ
-
-        x = screen_width - width - 10 # 右端から10ピクセル内側
-        y = 10  # 上端から10ピクセル（任意で調整可能）
-        window.geometry(f'{width}x{height}+{x}+{y}')
 
     def _normalize_id_string(self, id_str: str) -> str:
         """ID文字列を正規化 (先頭ゼロ削除、オールゼロなら"0")"""
@@ -641,6 +627,20 @@ class PartInfoViewer:
         self.status_var.set("バーコードスキャン中...")
         self._update_scan_feed()
 
+    def _center_and_right_align_window(self, window, window_width_offset=0, window_height_offset=0):
+        """ウィンドウを画面の右端に寄せて表示する"""
+        window.update_idletasks() # ウィンドウサイズを確定させる
+        width = window.winfo_width() + window_width_offset
+        height = window.winfo_height() + window_height_offset
+        
+        # 画面サイズを取得 (より正確にはtkinterのscreenwidth/heightを使う)
+        screen_width = window.winfo_screenwidth() # プライマリスクリーンの幅
+        # screen_height = window.winfo_screenheight() # プライマリスクリーンの高さ
+
+        x = screen_width - width - 10 # 右端から10ピクセル内側
+        y = 10  # 上端から10ピクセル（任意で調整可能）
+        window.geometry(f'{width}x{height}+{x}+{y}')
+
     def _update_scan_feed(self):
         if not self.is_scanning or not hasattr(self, 'cap') or not self.cap.isOpened():
             return
@@ -668,9 +668,9 @@ class PartInfoViewer:
         elapsed_time = time.time() - start_time
         wait_time = (1.0 / self.target_fps) - elapsed_time
         if wait_time > 0:
-            self.root.after(int(wait_time * 1000), self._update_scan_feed)
+            self.scan_window.after(int(wait_time * 1000), self._update_scan_feed)
         else:
-            self.root.after(1, self._update_scan_feed) # 最小遅延で再試行
+            self.scan_window.after(1, self._update_scan_feed) # 最小遅延で再試行
 
     def _on_barcode_scanned(self, barcode_value):
         self.barcode_entry.delete(0, tk.END)
@@ -689,11 +689,26 @@ class PartInfoViewer:
 
     def _on_closing(self):
         current_construction_no = self.construction_no_entry.get().strip()
+        self._save_geometry() # ウィンドウジオメトリを保存
         if current_construction_no: # 空でなければ保存
             self.config.set("last_construction_no_part_viewer", current_construction_no)
         self.config.save_config() # 明示的に保存
         print("部品情報表示ツールを終了します。") # 終了ログを出力
         self.root.destroy()
+
+    def _save_geometry(self):
+        """現在のウィンドウジオメトリをconfigに保存する"""
+        geometries = self.config.get("window_geometries", {})
+        geometries[self.__class__.__name__] = self.root.winfo_geometry()
+        self.config.set("window_geometries", geometries)
+
+    def _restore_geometry(self):
+        """configからウィンドウジオメリを復元する"""
+        geometries = self.config.get("window_geometries", {})
+        geometry = geometries.get(self.__class__.__name__)
+        if geometry:
+            self.root.geometry(geometry)
+
 
 if __name__ == "__main__":
     initial_cn = None

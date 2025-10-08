@@ -8,54 +8,47 @@ import os
 class LauncherApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("KHTツールランチャー")
-        self.root.geometry("400x400") # 高さを調整
+        self.root.title("Tool Launcher")
+        # self.root.geometry("400x400") # 固定サイズ指定を削除し、自動調整に任せる
 
-        main_frame = ttk.Frame(self.root, padding="20")
+        main_frame = ttk.Frame(self.root, padding="15")
         main_frame.pack(expand=True, fill=tk.BOTH)
 
-        # --- バーコードスキャン ---
-        scan_button = ttk.Button(main_frame, text="バーコードスキャン実行", command=self._run_scan_bcd_main, width=30)
-        scan_button.pack(pady=10)
+        btn_width = 35
+        btn_pady = 5
 
-        # --- 図面番号照合 ---
-        location_viewer_button = ttk.Button(main_frame, text="保管場所照合ツール起動", command=self._run_location_viewer, width=30)
-        location_viewer_button.pack(pady=10)
+        # --- メインワークフロー カテゴリ ---
+        workflow_frame = ttk.LabelFrame(main_frame, text="メインワークフロー", padding="10")
+        workflow_frame.pack(fill=tk.X, padx=10, pady=5)
 
-        # --- 部品情報表示 ---
-        part_info_frame = ttk.LabelFrame(main_frame, text="部品情報表示ツール")
-        part_info_frame.pack(pady=10, padx=10, fill=tk.X)
+        scan_button = ttk.Button(workflow_frame, text="バーコードスキャン実行", command=self._run_scan_bcd_main, width=btn_width)
+        scan_button.pack(pady=btn_pady)
 
-        ttk.Label(part_info_frame, text="工事番号 (任意):").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
-        self.part_info_cn_entry = ttk.Entry(part_info_frame, width=15)
-        self.part_info_cn_entry.grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW)
+        location_viewer_button = ttk.Button(workflow_frame, text="保管場所照合ツール起動", command=self._run_location_viewer, width=btn_width)
+        location_viewer_button.pack(pady=btn_pady)
 
-        ttk.Label(part_info_frame, text="バーコード (任意):").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
-        self.part_info_bc_entry = ttk.Entry(part_info_frame, width=20)
-        self.part_info_bc_entry.grid(row=1, column=1, padx=5, pady=5, sticky=tk.EW)
+        part_info_button = ttk.Button(workflow_frame, text="部品情報表示ツール起動", command=self._run_part_info_viewer, width=btn_width)
+        part_info_button.pack(pady=btn_pady)
 
-        part_info_button = ttk.Button(part_info_frame, text="部品情報表示ツール起動", command=self._run_part_info_viewer)
-        part_info_button.grid(row=2, column=0, columnspan=2, pady=10)
+        combine_csv_button = ttk.Button(workflow_frame, text="結合CSV作成", command=self._run_create_combined_csv, width=btn_width)
+        combine_csv_button.pack(pady=btn_pady)
 
-        part_info_frame.columnconfigure(1, weight=1)
+        # --- 管理・設定 カテゴリ ---
+        admin_frame = ttk.LabelFrame(main_frame, text="管理・設定", padding="10")
+        admin_frame.pack(fill=tk.X, padx=10, pady=5)
 
-        # --- ユーティリティセパレータ ---
-        ttk.Separator(main_frame, orient='horizontal').pack(fill='x', pady=10, after=part_info_frame)
-
-        # --- 結合CSV作成 ---
-        combine_csv_button = ttk.Button(main_frame, text="結合CSV作成", command=self._run_create_combined_csv, width=30)
-        combine_csv_button.pack(pady=5)
-
-        # --- 設定編集 ---
-        config_editor_button = ttk.Button(main_frame, text="設定編集", command=self._run_config_editor, width=30)
-        config_editor_button.pack(pady=5)
+        workflow_button = ttk.Button(admin_frame, text="ワークフロー管理ツール起動", command=self._run_workflow_manager, width=btn_width)
+        workflow_button.pack(pady=btn_pady)
+        config_editor_button = ttk.Button(admin_frame, text="設定編集", command=self._run_config_editor, width=btn_width)
+        config_editor_button.pack(pady=btn_pady)
 
         # --- 終了ボタン ---
-        exit_button = ttk.Button(main_frame, text="終了", command=self._on_closing, width=30)
+        exit_button = ttk.Button(main_frame, text="終了", command=self._on_closing, width=btn_width)
         exit_button.pack(side="bottom", pady=10)
 
         # ウィンドウクローズ時の処理
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
+        self.root.bind('<Escape>', lambda e: self._on_closing())
 
     def _check_file_exists(self, script_name):
         if not os.path.exists(script_name):
@@ -85,27 +78,16 @@ class LauncherApp:
         self._run_script("G_DrawingNumberViewer.py") # 起動するファイル名は G_DrawingNumberViewer.py のまま
 
     def _run_part_info_viewer(self):
-        cn = self.part_info_cn_entry.get().strip()
-        bc = self.part_info_bc_entry.get().strip()
-        args = []
-        if cn and bc:
-            args = [cn, bc]
-        elif cn: # 工事番号のみ指定の場合 (バーコードなしで起動)
-            # G_PartInfoViewer.py は現状、引数2つを期待するか、引数なしを期待する
-            # ここでは引数なしで起動する (もし工事番号のみ渡したい場合は G_PartInfoViewer.py の修正が必要)
-            print("部品情報表示ツール: 工事番号のみの指定は現在サポートされていません。引数なしで起動します。")
-            pass # args は空のまま
-        elif bc: # バーコードのみ指定の場合
-            print("部品情報表示ツール: バーコードのみの指定は現在サポートされていません。引数なしで起動します。")
-            pass # args は空のまま
-
-        self._run_script("G_PartInfoViewer.py", args if args else None)
+        self._run_script("G_PartInfoViewer.py", None)
 
     def _run_create_combined_csv(self):
         self._run_script("create_combined_csv.py")
 
     def _run_config_editor(self):
         self._run_script("G_ConfigEditor.py")
+
+    def _run_workflow_manager(self):
+        self._run_script("G_WorkflowManager.py")
 
     def _on_closing(self):
         print("KHTツールランチャーを終了します。")

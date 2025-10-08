@@ -39,6 +39,9 @@ class DrawingNumberViewer:
         elif self.default_source_csv_filename and os.path.isdir(self.source_data_dir): # source_data_dirが存在する場合のみ結合
              self.source_csv_path.set(os.path.join(self.source_data_dir, self.default_source_csv_filename))
 
+        # 読み込んだ全データを保持するインスタンス変数
+        self.prepared_data = []
+
 
         # --- GUI要素の作成 ---
         main_frame = ttk.Frame(self.root, padding="10")
@@ -51,6 +54,9 @@ class DrawingNumberViewer:
         last_construction_no = self.config.get("last_construction_number", self.config.get("default_construction_number", ""))
         if last_construction_no:
             self.construction_no_entry.insert(0, last_construction_no)
+        
+        # 工事番号入力後のイベントをバインド
+        self.construction_no_entry.bind("<FocusOut>", self.on_construction_no_changed)
 
         # 発注伝票CSV選択
         ttk.Label(main_frame, text="発注伝票CSV:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
@@ -72,11 +78,12 @@ class DrawingNumberViewer:
 
         # 保管場所フィルター (Listboxに変更、複数選択対応)
         ttk.Label(filter_frame, text="保管場所 (複数選択可):").grid(row=1, column=0, padx=5, pady=2, sticky=tk.W)
-        self.location_filter_listbox = tk.Listbox(filter_frame, selectmode=tk.MULTIPLE, exportselection=False, height=4)
+        self.location_filter_listbox = tk.Listbox(filter_frame, selectmode=tk.EXTENDED, exportselection=False, height=4)
         self.location_filter_listbox_scrollbar = ttk.Scrollbar(filter_frame, orient=tk.VERTICAL, command=self.location_filter_listbox.yview)
         self.location_filter_listbox.configure(yscrollcommand=self.location_filter_listbox_scrollbar.set)
         self.location_filter_listbox.grid(row=1, column=1, columnspan=2, padx=(0,0), pady=2, sticky=tk.EW)
         self.location_filter_listbox_scrollbar.grid(row=1, column=3, padx=(0,5), pady=2, sticky=(tk.N, tk.S))
+        self.location_filter_listbox.bind("<<ListboxSelect>>", lambda e: self._apply_filters_and_display())
 
         filter_frame.columnconfigure(1, weight=1) # フィルター入力欄が伸縮するように
 
@@ -103,7 +110,10 @@ class DrawingNumberViewer:
         self.tree.column("status", width=100)
         self.tree.column("location", width=100)
 
-        # 色変えのためのタグ設定は削除
+        # Treeviewのタグ設定（色分け用）
+        self.tree.tag_configure("ok", foreground="black")
+        self.tree.tag_configure("not_found", foreground="gray")
+        self.tree.tag_configure("manual", foreground="blue")
 
         self.tree.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S))
 
@@ -124,12 +134,19 @@ class DrawingNumberViewer:
 
         # ウィンドウクローズ時の処理をバインド
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.root.bind('<Escape>', lambda e: self.on_closing())
 
         # 初期フォーカス設定とEnterキーによるナビゲーション
         self._setup_keyboard_navigation()
 
         # 初期フォーカスを工事番号入力欄に設定
         self.construction_no_entry.focus_set()
+        
+        # 起動時に保管場所リストを更新
+        self.root.after(100, self.update_location_filter_options)
+
+        # ウィンドウジオメトリの復元
+        self._restore_geometry()
 
     def on_closing(self):
         """ウィンドウが閉じられるときに呼び出される処理"""
@@ -141,6 +158,7 @@ class DrawingNumberViewer:
         selected_locations = [self.location_filter_listbox.get(i) for i in selected_location_indices]
         current_location_filter_str = ",".join(selected_locations) # カンマ区切りで保存
 
+        self._save_geometry()
         self.config.set("last_construction_number", current_construction_no)
         self.config.set("last_source_csv_path", current_source_csv_path)
         self.config.set("last_filter_start_value", current_filter_start if current_filter_start else str(self.default_filter_start_val))
@@ -148,6 +166,20 @@ class DrawingNumberViewer:
         self.config.save_config()
         print("保管場所照合ツールを終了します。")
         self.root.destroy()
+
+    def _save_geometry(self):
+        """現在のウィンドウジオメトリをconfigに保存する"""
+        geometries = self.config.get("window_geometries", {})
+        geometries[self.__class__.__name__] = self.root.winfo_geometry()
+        self.config.set("window_geometries", geometries)
+
+    def _restore_geometry(self):
+        """configからウィンドウジオメトリを復元する"""
+        geometries = self.config.get("window_geometries", {})
+        geometry = geometries.get(self.__class__.__name__)
+        if geometry:
+            self.root.geometry(geometry)
+
 
     def _select_all_on_focus(self, event):
         """フォーカス時にテキストを全選択する"""
@@ -163,10 +195,15 @@ class DrawingNumberViewer:
         self.filter_start_entry.bind("<FocusIn>", self._select_all_on_focus) # Listboxは対象外
 
         # Enterキーでのフォーカス移動とアクション
-        self.construction_no_entry.bind("<Return>", lambda event: self.source_csv_entry.focus_set())
+        self.construction_no_entry.bind("<Return>", self.on_construction_no_changed)
         self.source_csv_entry.bind("<Return>", lambda event: self.filter_start_entry.focus_set())
-        self.filter_start_entry.bind("<Return>", lambda event: self.perform_matching())
+        self.filter_start_entry.bind("<Return>", lambda event: self._apply_filters_and_display())
         self.browse_button.bind("<Return>", lambda event: self.browse_button.invoke()) # Enterでボタン実行
+
+    def on_construction_no_changed(self, event=None):
+        """工事番号が変更されたときに呼ばれる"""
+        self.update_location_filter_options()
+        self.source_csv_entry.focus_set() # 次の入力欄へフォーカスを移動
 
     def browse_source_csv(self):
         initial_dir = self.source_data_dir
@@ -238,26 +275,19 @@ class DrawingNumberViewer:
             messagebox.showerror("エラー", f"発注伝票CSVファイルの読み込み中にエラーが発生しました:\n{e}")
             return None
 
-    def perform_matching(self):
-        # 結果表示ツリーをクリア
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        self.data_count_label.config(text="表示データ数: 0 件") # データ数表示もリセット
-
+    def update_location_filter_options(self):
+        """工事番号に基づいてスキャンデータを読み込み、保管場所フィルターの選択肢を更新する"""
         construction_no = self.construction_no_entry.get().strip()
         if not construction_no:
-            messagebox.showwarning("入力エラー", "工事番号を入力してください。")
-            return
-
+            return # 工事番号がなければ何もしない
+        
         scanned_data_map = self.load_scanned_data(construction_no)
         if not scanned_data_map:
-            # load_scanned_data内でエラーメッセージ表示済み
-            return # scanned_data_map が空なら処理終了
-        
-        # 保管場所フィルターの選択肢を更新 (Listbox用)
+            return
+
         self.location_filter_listbox.delete(0, tk.END) # クリア
         unique_locations = sorted(list(set(info["location"] for info in scanned_data_map.values() if info.get("location"))))
-        self.location_filter_listbox.insert(tk.END, "すべての場所") # 先頭に追加
+        self.location_filter_listbox.insert(tk.END, "すべての場所")
         for loc in unique_locations:
             self.location_filter_listbox.insert(tk.END, loc)
 
@@ -268,122 +298,11 @@ class DrawingNumberViewer:
             for i, item_in_listbox in enumerate(self.location_filter_listbox.get(0, tk.END)):
                 if item_in_listbox in last_locations:
                     self.location_filter_listbox.selection_set(i)
-        elif self.location_filter_listbox.size() > 0: # 前回値がなければ「すべての場所」を選択状態にする
+        elif self.location_filter_listbox.size() > 0:
             self.location_filter_listbox.selection_set(0)
 
-        source_data_map = self.load_source_data(self.source_csv_path.get())
-        if source_data_map is None:
-            # load_source_data内でエラーメッセージ表示済み
-            return
-
-        # 部品№フィルター値の取得と解釈 (複数対応)
-        filter_input_str = self.filter_start_entry.get().strip()
-        apply_parts_no_filter = False
-        parts_no_filter_values = [] # フィルター値のリスト
-
-        if filter_input_str and filter_input_str != "0":
-            raw_filter_inputs = [val.strip() for val in filter_input_str.split(',')]
-            for val_str in raw_filter_inputs:
-                if not val_str:
-                    continue # 空の要素はスキップ
-                try:
-                    filter_base_input = int(val_str)
-                    if filter_base_input > 0:
-                        # ユーザー入力を基にフィルター値を生成 (例: 1 -> "#100", 10 -> "#1000")
-                        parts_no_filter_values.append(f"#{filter_base_input}00")
-                    # 0以下の入力は無視 (またはエラー表示)
-                except ValueError:
-                    messagebox.showwarning("入力エラー", f"部品№フィルターの '{val_str}' は数字で入力してください。")
-                    return # エラーがあれば処理中断
-            if parts_no_filter_values:
-                apply_parts_no_filter = True
-
-        # 保管場所フィルター値の取得 (複数対応)
-        selected_location_indices = self.location_filter_listbox.curselection()
-        selected_locations_from_listbox = [self.location_filter_listbox.get(i) for i in selected_location_indices]
-        
-        passes_all_locations = False # Trueなら場所フィルターを適用しない
-        if not selected_location_indices: # 何も選択されていない場合
-            passes_all_locations = True
-        elif "すべての場所" in selected_locations_from_listbox: # 「すべての場所」が選択されていれば他は無視
-            passes_all_locations = True
-
-        all_results_before_filter = [] # リストの初期化
-        for bc, scanned_location_info in scanned_data_map.items():
-            scanned_location = scanned_location_info.get("location", "---")
-            scanned_type = scanned_location_info.get("type", "")
-            normalized_scanned_bc = bc.lstrip('0')
-            source_info = source_data_map.get(normalized_scanned_bc)
-            location_to_display = scanned_location if scanned_location else "---"
-
-            key_segment_for_display = "---"
-            drawing_no_to_display = "---"
-            parts_no_to_display = "---"
-
-            drawing_no_from_source = None # ループ内で drawing_no_from_source を初期化
-
-            if source_info: # 発注伝票情報 (source_info) がある場合
-                drawing_no_from_source = source_info.get("drawing_no")
-                parts_no_to_display = source_info.get("parts_no", "---")
-                drawing_no_to_display = drawing_no_from_source if drawing_no_from_source else "---"
-
-                # 図番があり、文字列型で、ソートキー抽出に必要な長さがある場合
-                if drawing_no_from_source and isinstance(drawing_no_from_source, str) and \
-                   len(drawing_no_from_source) >= (self.key_extract_start_0based + self.key_extract_length):
-                    try:
-                        # 設定に基づいてソートキー部分を文字列として抽出
-                        extracted_str = drawing_no_from_source[self.key_extract_start_0based : self.key_extract_start_0based + self.key_extract_length]
-                        key_segment_for_display = extracted_str
-                    except Exception: # 何らかの理由で抽出に失敗した場合 (通常は起こりにくい)
-                        key_segment_for_display = "---"
-
-            # Determine display status
-            status_to_display = "該当なし" # デフォルト
-            if source_info: # If linked to source data, it's initially OK
-                status_to_display = "OK"
-
-            # Override for special types, this order matters
-            if scanned_type == self.no_barcode_type_str: # バーコードなし（システムID）
-                status_to_display = "該当なし (バーコードなし)"
-            elif scanned_type == "MANUAL": # 新しい "MANUAL" タイプをチェック
-                status_to_display = "手動登録 (図番)"
-            elif scanned_type == self.manual_drawing_barcode_type_str and self.manual_drawing_barcode_type_str != "MANUAL":
-                # configからの従来のタイプを処理 (もし "MANUAL" と異なる場合)
-                status_to_display = "手動登録 (図番)"
-
-            all_results_before_filter.append((bc, normalized_scanned_bc, parts_no_to_display, drawing_no_to_display, key_segment_for_display, status_to_display, location_to_display))
-
-        results_to_display = []
-        for item_data in all_results_before_filter:
-            item_status = item_data[5]
-            item_location = item_data[6]
-            item_parts_no = item_data[2]
-
-            # 1. 保管場所フィルター
-            passes_location_filter = False
-            if passes_all_locations: # 「すべての場所」が選択されているか、何も選択されていない
-                passes_location_filter = True
-            elif item_location in selected_locations_from_listbox: # 特定の場所が選択されていて、アイテムの場所が一致
-                passes_location_filter = True
-            
-            if not passes_location_filter:
-                continue
-
-            # 2. 部品№フィルター
-            if item_status == "OK" or item_status == "手動登録 (図番)":
-                if apply_parts_no_filter:
-                    if item_parts_no in parts_no_filter_values: # 複数指定のOR条件
-                        results_to_display.append(item_data)
-                else: # 部品№フィルターが適用されていない場合は表示
-                    results_to_display.append(item_data)
-            elif item_status.startswith("該当なし"): # 「該当なし」系は部品№フィルターに関わらず表示
-                results_to_display.append(item_data)
-
-        if not results_to_display:
-            messagebox.showinfo("情報", "照合可能なスキャンデータがありませんでした。")
-            self.data_count_label.config(text="表示データ数: 0 件")
-            return
-
+    def _get_sort_key(self, drawing_no_str):
+        """図番文字列からソート用のキー（数値）を抽出する"""
         def sort_key_func(item):
             drawing_no_str = item[3] # 図番は4番目の要素
             if drawing_no_str and isinstance(drawing_no_str, str) and \
@@ -394,12 +313,142 @@ class DrawingNumberViewer:
                 except ValueError:
                     return float('inf')
             return float('inf')
+        return sort_key_func
 
+    def _get_status_and_tag(self, source_info, scanned_type):
+        """ソース情報とスキャンタイプから表示用のステータスとTreeviewタグを決定する"""
+        if scanned_type == self.no_barcode_type_str:
+            return "該当なし (バーコードなし)", "not_found"
+        if scanned_type == "MANUAL" or scanned_type == self.manual_drawing_barcode_type_str:
+            return "手動登録 (図番)", "manual"
+        if source_info:
+            return "OK", "ok"
+        return "該当なし", "not_found"
+
+    def _prepare_data_for_display(self, scanned_data_map, source_data_map):
+        """スキャンデータとソースデータを結合し、表示用のデータリストを作成する"""
+        all_results = []
+        for bc, scanned_info in scanned_data_map.items():
+            normalized_bc = bc.lstrip('0')
+            source_info = source_data_map.get(normalized_bc)
+
+            status, tag = self._get_status_and_tag(source_info, scanned_info.get("type", ""))
+            
+            drawing_no = source_info.get("drawing_no") if source_info else "---"
+            parts_no = source_info.get("parts_no", "---") if source_info else "---"
+            location = scanned_info.get("location", "---")
+
+            sort_key_display = "---"
+            if isinstance(drawing_no, str) and len(drawing_no) >= (self.key_extract_start_0based + self.key_extract_length):
+                sort_key_display = drawing_no[self.key_extract_start_0based : self.key_extract_start_0based + self.key_extract_length]
+
+            all_results.append({
+                "values": (bc, normalized_bc, parts_no, drawing_no, sort_key_display, status, location),
+                "tag": tag
+            })
+        return all_results
+
+    def _filter_results(self, all_results):
+        """フィルター条件に基づいて表示するデータを絞り込む"""
+        # 部品№フィルター値の取得
+        filter_input_str = self.filter_start_entry.get().strip()
+        apply_parts_no_filter = False
+        parts_no_filter_values = []
+        if filter_input_str and filter_input_str != "0":
+            raw_filter_inputs = [val.strip() for val in filter_input_str.split(',')]
+            for val_str in raw_filter_inputs:
+                if not val_str:
+                    continue
+                try:
+                    parts_no_filter_values.append(f"#{int(val_str)}00")
+                except ValueError:
+                    messagebox.showwarning("入力エラー", f"部品№フィルターの '{val_str}' は数字で入力してください。")
+                    return None # エラーを示す
+            if parts_no_filter_values:
+                apply_parts_no_filter = True
+
+        # 保管場所フィルター値の取得
+        selected_indices = self.location_filter_listbox.curselection()
+        selected_locations = [self.location_filter_listbox.get(i) for i in selected_indices]
+        all_locations_selected = not selected_indices or "すべての場所" in selected_locations
+
+        # フィルタリング実行
+        filtered_list = []
+        for item in all_results:
+            status = item["values"][5]
+            location = item["values"][6]
+            parts_no = item["values"][2]
+
+            # 1. 保管場所フィルター
+            if not all_locations_selected and location not in selected_locations:
+                continue
+
+            # 2. 部品№フィルター
+            if status in ("OK", "手動登録 (図番)"):
+                if apply_parts_no_filter:
+                    if parts_no in parts_no_filter_values:
+                        filtered_list.append(item)
+                else:
+                    filtered_list.append(item)
+            elif status.startswith("該当なし"):
+                filtered_list.append(item)
+        
+        return filtered_list
+
+    def _apply_filters_and_display(self):
+        """メモリ上のデータにフィルターを適用し、Treeviewを更新する"""
+        # 結果表示ツリーをクリア
+        self.tree.delete(*self.tree.get_children())
+        self.data_count_label.config(text="表示データ数: 0 件")
+
+        # ソート
+        def sort_key_func(item):
+            drawing_no_str = item["values"][3]
+            if isinstance(drawing_no_str, str) and len(drawing_no_str) >= (self.key_extract_start_0based + self.key_extract_length):
+                try:
+                    return int(drawing_no_str[self.key_extract_start_0based : self.key_extract_start_0based + self.key_extract_length])
+                except ValueError:
+                    return float('inf')
+            return float('inf')
+        
+        if not self.prepared_data:
+            # まだデータが読み込まれていない場合は何もしない
+            return
+
+        # フィルタリング
+        results_to_display = self._filter_results(self.prepared_data)
+
+        if results_to_display is None: # フィルターでエラーが発生した場合
+            return
+
+        if not results_to_display:
+            # フィルター結果が0件の場合、メッセージは表示せず、表示をクリアするだけ
+            return
+
+        # ソート
         sorted_results = sorted(results_to_display, key=sort_key_func)
 
+        # Treeviewへの表示
         for res in sorted_results:
-            self.tree.insert("", tk.END, values=res)
+            self.tree.insert("", tk.END, values=res["values"], tags=(res["tag"],))
         self.data_count_label.config(text=f"表示データ数: {len(sorted_results)} 件")
+
+    def perform_matching(self):
+        """ファイルからデータを読み込み、メモリに保持して、最初の表示を行う"""
+        construction_no = self.construction_no_entry.get().strip()
+        if not construction_no:
+            messagebox.showwarning("入力エラー", "工事番号を入力してください。")
+            return
+
+        scanned_data_map = self.load_scanned_data(construction_no)
+        if not scanned_data_map:
+            return
+        source_data_map = self.load_source_data(self.source_csv_path.get())
+        if source_data_map is None:
+            return
+
+        self.prepared_data = self._prepare_data_for_display(scanned_data_map, source_data_map)
+        self._apply_filters_and_display()
 
 if __name__ == "__main__":
     try:
