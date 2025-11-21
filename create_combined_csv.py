@@ -52,6 +52,39 @@ def load_scan_data(filepath: str) -> List[Dict[str, str]]:
         print(f"エラー: スキャンデータファイル ({filepath}) の読み込み中にエラー: {e}")
     return scanned_items
 
+def load_process_data(filepath: str) -> Dict[str, Dict[str, str]]:
+    """
+    工程仕分けデータCSV (例: 3804_processed.csv) を読み込み、
+    正規化されたバーコードをキーとする辞書の辞書を返します。
+    同じバーコードが複数ある場合は、ファイルの最後に出てくるものが採用されます（最新の状態）。
+    """
+    process_map: Dict[str, Dict[str, str]] = {}
+    if not os.path.exists(filepath):
+        # このファイルは存在しなくても処理を継続する
+        print(f"情報: 工程仕分けデータファイルが見つかりません: {filepath}")
+        return process_map
+    try:
+        with open(filepath, mode='r', newline='', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            expected_cols = ["barcode_info", "process_name", "supplier_name", "work_session_id"]
+            if not all(col in reader.fieldnames for col in expected_cols):
+                print(f"警告: 工程仕分けデータファイル ({filepath}) のヘッダーが不正です。スキップします。")
+                return {}
+
+            for row in reader:
+                barcode = row.get("barcode_info", "").strip()
+                if barcode:
+                    normalized_barcode = _normalize_id_string(barcode)
+                    # 後勝ちで上書きすることで、最新の工程情報を採用する
+                    process_map[normalized_barcode] = {
+                        "process": row.get("process_name", ""),
+                        "supplier": row.get("supplier_name", ""),
+                        "session_id": row.get("work_session_id", "")
+                    }
+    except Exception as e:
+        print(f"エラー: 工程仕分けデータファイル ({filepath}) の読み込み中にエラー: {e}")
+    return process_map
+
 def load_source_data(
     filepath: str,
     order_col_name: str,
@@ -123,10 +156,12 @@ def create_combined_csv() -> None:
     construction_no = config.get("last_construction_number", "3804") # 例として前回値を使用
     scan_csv_filename = f"{construction_no}.csv"
     source_csv_filename = f"{construction_no}s.csv" # 発注伝票CSVの命名規則に合わせる
+    process_csv_filename = f"{construction_no}_processed.csv" # 工程仕分けCSV
     result_csv_filename = f"{construction_no}result.csv"
 
     scan_csv_path = os.path.join(data_dir, scan_csv_filename) # dataディレクトリ内の工事番号.csv
     source_csv_path = os.path.join(source_data_dir, source_csv_filename)
+    process_csv_path = os.path.join(data_dir, process_csv_filename)
     result_csv_path = os.path.join(data_dir, result_csv_filename) 
     
     print(f"スキャンデータCSV: {os.path.abspath(scan_csv_path)}")
@@ -137,6 +172,9 @@ def create_combined_csv() -> None:
     drawing_no_col_name_cfg = config.get("source_csv_drawing_no_column", "図番")
     parts_no_col_name_cfg = config.get("source_csv_parts_no_column", "部品№")
     delivery_count_col_name_src = "納入数" # ソースCSVのヘッダー名として固定
+
+    # 各CSVファイルをロード
+    process_data_map = load_process_data(process_csv_path)
 
     scanned_data_list = load_scan_data(scan_csv_path)
     if not scanned_data_list:
@@ -153,7 +191,8 @@ def create_combined_csv() -> None:
         return
 
     results_data_list: List[List[str]] = []
-    output_csv_header = ["バーコード値", "部品№", "図番№", "納入数", "保管場所"] # ヘッダーに「保管場所」を追加
+    # 出力ヘッダーに工程仕分けの情報を追加
+    output_csv_header = ["バーコード値", "部品№", "図番№", "納入数", "保管場所", "工程", "納品業者", "作業日時"]
     results_data_list.append(output_csv_header)
 
     for scanned_item in scanned_data_list:
@@ -161,16 +200,25 @@ def create_combined_csv() -> None:
         location_val = scanned_item["location"]
 
         normalized_barcode_for_lookup = _normalize_id_string(original_barcode_val)
-
+        
+        # 各データソースから情報を取得
         source_item_info = source_data_map.get(normalized_barcode_for_lookup)
+        process_item_info = process_data_map.get(normalized_barcode_for_lookup)
 
         if source_item_info:
+            process_name = process_item_info.get("process", "") if process_item_info else ""
+            supplier_name = process_item_info.get("supplier", "") if process_item_info else ""
+            session_id = process_item_info.get("session_id", "") if process_item_info else ""
+
             results_data_list.append([
                 original_barcode_val,
                 source_item_info["parts"],
                 source_item_info["drawing"],
                 source_item_info["delivery_count"],
-                location_val # 保管場所を追加
+                location_val,
+                process_name,
+                supplier_name,
+                session_id
             ])
         else:
             results_data_list.append([
@@ -178,7 +226,10 @@ def create_combined_csv() -> None:
                 "", # 部品№なし
                 "", # 図番なし
                 "", # 納入数なし
-                location_val # 保管場所を追加
+                location_val,
+                "", # 工程なし
+                "", # 業者なし
+                ""  # セッションIDなし
             ])
             # print(f"情報: バーコード '{original_barcode_val}' (正規化後: '{normalized_barcode_for_lookup}') に対応する発注情報が見つかりません。")
 

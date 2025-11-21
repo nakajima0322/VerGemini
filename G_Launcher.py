@@ -21,6 +21,9 @@ class LauncherApp:
         workflow_frame = ttk.LabelFrame(main_frame, text="メインワークフロー", padding="10")
         workflow_frame.pack(fill=tk.X, padx=10, pady=5)
 
+        process_sorter_button = ttk.Button(workflow_frame, text="【新規】工程仕分けツール", command=self._run_process_sorter, width=btn_width)
+        process_sorter_button.pack(pady=btn_pady)
+
         scan_button = ttk.Button(workflow_frame, text="バーコードスキャン実行", command=self._run_scan_bcd_main, width=btn_width)
         scan_button.pack(pady=btn_pady)
 
@@ -70,6 +73,9 @@ class LauncherApp:
         except Exception as e:
             messagebox.showerror("実行エラー", f"{script_name} の起動中にエラーが発生しました:\n{e}", parent=self.root)
             print(f"エラー: {script_name} 起動失敗 - {e}")
+
+    def _run_process_sorter(self):
+        self._run_script("G_ProcessSorter.py")
 
     def _run_scan_bcd_main(self):
         self._run_script("G_ScanBCD_main.py")

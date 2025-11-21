@@ -937,3 +937,41 @@
 2025-10-06 16:01:06,191 - INFO - 手動登録: {'barcode_info': '9999990071', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'NO_BARCODE', 'timestamp': '2025-10-06 16:01:06'}
 2025-10-06 16:01:06,383 - INFO - 手動登録: {'barcode_info': '9999990072', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'NO_BARCODE', 'timestamp': '2025-10-06 16:01:06'}
 2025-10-06 16:01:06,580 - INFO - 手動登録: {'barcode_info': '9999990073', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'NO_BARCODE', 'timestamp': '2025-10-06 16:01:06'}
+2025-10-23 14:47:15,356 - INFO - スキャン結果: {'barcode_info': '0000329638', 'construction_number': '9999', 'location': 'カブト1F', 'barcode_type': 'CODE39', 'timestamp': '2025-10-23 14:47:15'}
+2025-10-23 14:47:16,295 - INFO - スキャン結果: {'barcode_info': '0000329641', 'construction_number': '9999', 'location': 'カブト1F', 'barcode_type': 'CODE39', 'timestamp': '2025-10-23 14:47:16'}
+2025-10-23 14:47:16,571 - INFO - スキャン結果: {'barcode_info': '0000329643', 'construction_number': '9999', 'location': 'カブト1F', 'barcode_type': 'CODE39', 'timestamp': '2025-10-23 14:47:16'}
+2025-11-20 14:38:20,238 - INFO - スキャン結果: {'barcode_info': '0000331670', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:38:20'}
+2025-11-20 14:38:26,244 - INFO - スキャン結果: {'barcode_info': '0000331664', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:38:26'}
+2025-11-20 14:38:47,115 - INFO - スキャン結果: {'barcode_info': '0000331683', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:38:47'}
+2025-11-20 14:38:48,042 - INFO - スキャン結果: {'barcode_info': '0000331684', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:38:48'}
+2025-11-20 14:38:52,857 - INFO - スキャン結果: {'barcode_info': '0000331687', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:38:52'}
+2025-11-20 14:39:01,057 - INFO - スキャン結果: {'barcode_info': '0000331686', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:39:01'}
+2025-11-20 14:39:15,763 - INFO - スキャン結果: {'barcode_info': '0000331678', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:39:15'}
+2025-11-20 14:39:16,310 - INFO - スキャン結果: {'barcode_info': '0000331677', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:39:16'}
+2025-11-20 14:39:17,699 - INFO - スキャン結果: {'barcode_info': '0000331679', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:39:17'}
+2025-11-20 14:39:18,281 - INFO - スキャン結果: {'barcode_info': '0000331680', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:39:18'}
+2025-11-20 14:39:30,087 - INFO - スキャン結果: {'barcode_info': '0000331666', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:39:30'}
+2025-11-20 14:39:30,292 - INFO - スキャン結果: {'barcode_info': '0000331673', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:39:30'}
+2025-11-20 14:39:30,752 - INFO - スキャン結果: {'barcode_info': '0000331667', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:39:30'}
+2025-11-20 14:39:31,524 - INFO - スキャン結果: {'barcode_info': '0000331676', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:39:31'}
+2025-11-20 14:39:41,582 - INFO - スキャン結果: {'barcode_info': '0000331665', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:39:41'}
+2025-11-20 14:39:42,745 - INFO - スキャン結果: {'barcode_info': '0000331671', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:39:42'}
+2025-11-20 14:39:45,111 - INFO - スキャン結果: {'barcode_info': '0000331672', 'construction_number': '9208', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:39:45'}
+2025-11-20 14:49:43,945 - INFO - スキャン結果: {'barcode_info': '0000331526', 'construction_number': '7405', 'location': 'カブト1F', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:49:43'}
+2025-11-20 14:49:46,123 - INFO - スキャン結果: {'barcode_info': '0000331527', 'construction_number': '7405', 'location': 'カブト1F', 'barcode_type': 'CODE39', 'timestamp': '2025-11-20 14:49:46'}
+2025-11-21 15:11:20,754 - INFO - 工程スキャン: 0000287277, 工事番号: 9999, 工程: 無電解ニッケルメッキ, 業者: テスト業者A
+2025-11-21 15:11:24,611 - INFO - 工程スキャン: 0000296226, 工事番号: 9999, 工程: 無電解ニッケルメッキ, 業者: テスト業者A
+2025-11-21 15:11:24,611 - INFO - 工程スキャン: 0000287271, 工事番号: 9999, 工程: 無電解ニッケルメッキ, 業者: テスト業者A
+2025-11-21 15:11:26,117 - INFO - 工程スキャン: 0000296080, 工事番号: 9999, 工程: 無電解ニッケルメッキ, 業者: テスト業者A
+2025-11-21 15:11:28,815 - INFO - 工程スキャン: 0000296078, 工事番号: 9999, 工程: 無電解ニッケルメッキ, 業者: テスト業者A
+2025-11-21 15:11:34,227 - INFO - 工程スキャン: 0000296077, 工事番号: 9999, 工程: 無電解ニッケルメッキ, 業者: テスト業者A
+2025-11-21 15:11:38,782 - INFO - 工程スキャン: 0000296079, 工事番号: 9999, 工程: 無電解ニッケルメッキ, 業者: テスト業者A
+2025-11-21 15:18:40,731 - INFO - スキャン結果: {'barcode_info': '0000287277', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-21 15:18:40'}
+2025-11-21 15:18:48,121 - INFO - スキャン結果: {'barcode_info': '0000287271', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-21 15:18:48'}
+2025-11-21 15:18:48,226 - INFO - スキャン結果: {'barcode_info': '00002872G7', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-21 15:18:48'}
+2025-11-21 15:18:49,525 - INFO - スキャン結果: {'barcode_info': '0000296226', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-21 15:18:49'}
+2025-11-21 15:18:50,778 - INFO - スキャン結果: {'barcode_info': '0000296080', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-21 15:18:50'}
+2025-11-21 15:18:51,906 - INFO - スキャン結果: {'barcode_info': '0000296078', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-21 15:18:51'}
+2025-11-21 15:18:52,655 - INFO - スキャン結果: {'barcode_info': '000029608W', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-21 15:18:52'}
+2025-11-21 15:18:52,903 - INFO - スキャン結果: {'barcode_info': '0000296079', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-21 15:18:52'}
+2025-11-21 15:18:54,053 - INFO - スキャン結果: {'barcode_info': '0000296077', 'construction_number': '9999', 'location': 'コンテナ', 'barcode_type': 'CODE39', 'timestamp': '2025-11-21 15:18:54'}

@@ -1,5 +1,11 @@
 {
     "___ACTIVE_SETTINGS___": "--- 現在有効な設定 ---",
+    "process_definitions": [
+        "追加工程なし（完成品）",
+        "無電解ニッケルメッキ",
+        "塗装",
+        "ユニクロメッキ"
+    ],
     "auto_stop": true,
     "barcode_type": "CODE39",
     "camera_height": 480,
@@ -31,7 +37,7 @@
     ],
     "overlay_enabled": true,
     "scan_log": "ScanBCD.log",
-    "source_data_dir": "Source",
+    "source_data_dir": "data",
     "source_csv_arrangement_status_column": "手配",
     "source_csv_delivery_count_column": "納入数",
     "source_csv_delivery_date_column": "納期",
@@ -43,7 +49,7 @@
     "target_fps": 30,
     "___STATE_AND_HISTORY___": "--- 前回終了時の状態（自動更新） ---",
     "last_construction_no_part_viewer": "",
-    "last_construction_number": "3804",
+    "last_construction_number": "9999",
     "last_construction_number_scanner": "9999",
     "last_filter_start_value": "0",
     "last_location_filter_viewer": "コンテナ",
