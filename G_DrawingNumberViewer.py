@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import csv
 import os
+import sys
 from G_config import Config # 既存のConfigクラスを利用
 
 class DrawingNumberViewer:
@@ -11,6 +12,7 @@ class DrawingNumberViewer:
         self.root = root
         self.config = config
         self.root.title("保管場所照合ツール")
+        self.initial_pos = None # 初期位置を保持する変数
 
         # 設定値の取得
         self.data_dir = self.config.get("data_dir", "data")
@@ -146,7 +148,11 @@ class DrawingNumberViewer:
         self.root.after(100, self.update_location_filter_options)
 
         # ウィンドウジオメトリの復元
-        self._restore_geometry()
+        # 初期位置が指定されていない場合のみ、保存されたジオメトリを復元
+        if self.initial_pos:
+            self.root.geometry(f"+{self.initial_pos['x']}+{self.initial_pos['y']}")
+        else:
+            self._restore_geometry()
 
     def on_closing(self):
         """ウィンドウが閉じられるときに呼び出される処理"""
@@ -220,25 +226,30 @@ class DrawingNumberViewer:
 
     def load_scanned_data(self, construction_no):
         """指定された工事番号のスキャンデータCSVを読み込む"""
-        # scanned_data_map = {barcode: location}
         scanned_data_map = {}
-        # G_ScanBCD_Scanner.pyではヘッダーなしでbarcode_infoが0列目に書き込まれる想定
-        # "barcode_info", "construction_number", "location", "barcode_type", "timestamp"
         scan_data_filename = os.path.join(self.data_dir, f"{construction_no}.csv")
 
         if not os.path.exists(scan_data_filename):
             messagebox.showwarning("警告", f"スキャンデータファイルが見つかりません:\n{scan_data_filename}")
-            return {} # 空の辞書を返す
+            return {}
         try:
             with open(scan_data_filename, mode='r', newline='', encoding='utf-8') as file:
-                reader = csv.reader(file)
-                for row in reader:
-                    if row and len(row) >= 4: # barcode_info, _, location, barcode_type があるか
-                        barcode = row[0].strip()
-                        location = row[2].strip()
-                        if barcode: # バーコードが空でなければ
-                            # 同じバーコードが複数回スキャンされた場合、最後に読み込まれた場所が採用される
-                            scanned_data_map[barcode] = {"location": location, "type": row[3].strip()}
+                first_line = file.readline()
+                file.seek(0)
+
+                if "barcode_info" in first_line: # ヘッダーあり
+                    reader = csv.DictReader(file)
+                    for row in reader:
+                        barcode = row.get("barcode_info", "").strip()
+                        if barcode:
+                            scanned_data_map[barcode] = {"location": row.get("location", ""), "type": row.get("barcode_type", "")}
+                else: # ヘッダーなし (古い形式)
+                    reader = csv.reader(file)
+                    for row in reader:
+                        if len(row) >= 4:
+                            barcode = row[0].strip()
+                            if barcode:
+                                scanned_data_map[barcode] = {"location": row[2].strip(), "type": row[3].strip()}
             return scanned_data_map
         except Exception as e:
             messagebox.showerror("エラー", f"スキャンデータファイルの読み込み中にエラーが発生しました:\n{e}")
@@ -452,11 +463,25 @@ class DrawingNumberViewer:
 
 if __name__ == "__main__":
     try:
+        # --- コマンドライン引数から位置情報を取得 ---
+        pos_args = {}
+        if "--pos" in sys.argv:
+            try:
+                index = sys.argv.index("--pos")
+                pos_args['x'] = int(sys.argv[index + 1])
+                pos_args['y'] = int(sys.argv[index + 2])
+            except (ValueError, IndexError):
+                pass # 引数が不正な場合は無視
+
         # 設定ファイルのロード
         config_instance = Config("config.json")
 
         app_root = tk.Tk()
         viewer = DrawingNumberViewer(app_root, config_instance)
+        # 位置情報があればインスタンスに渡す
+        if pos_args:
+            viewer.initial_pos = pos_args
+
         app_root.mainloop()
     except Exception as e:
         print(f"G_DrawingNumberViewer の起動中にエラーが発生しました: {e}")

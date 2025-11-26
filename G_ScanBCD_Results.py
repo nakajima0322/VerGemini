@@ -17,9 +17,9 @@ class ResultDisplay:
 		construction_label = tk.Label(root, text=f"{construction_number}", font=("Helvetica", 20))
 		construction_label.pack(pady=10)
 
-		location_label_title = tk.Label(root, text="保管場所:", font=("Helvetica", 16))
+		location_label_title = tk.Label(root, text="選択項目:", font=("Helvetica", 16))
 		location_label_title.pack(pady=5)
-		location_label = tk.Label(root, text=f"{location}", font=("Helvetica", 20))
+		location_label = tk.Label(root, text=f"{location}", font=("Helvetica", 20, "bold"))
 		location_label.pack(pady=10)
 
 		scan_count_label_title = tk.Label(root, text="スキャンしたバーコードの数:", font=("Helvetica", 16))

@@ -5,7 +5,6 @@ import sys
 import cv2
 import time
 import os
-import csv
 import json
 from datetime                   import datetime
 import logging
@@ -68,6 +67,7 @@ class BarcodeScanner:
         self.location =             location
         self.construction_number =  construction_number
         self.last_scan_time =       time.time()
+        self.worker_name =        self.config.get("current_worker", "unknown")
 
         self._tk_dialog_parent_window = None # Tkinterダイアログの親ウィンドウ用
         self.success_count =    0  # 成功したスキャン数
@@ -164,13 +164,10 @@ class BarcodeScanner:
             self.barcode_data.append(barcode_info)
             self.scan_count += 1
             self.success_count += 1
-            data = self.data_collector.collect(barcode_info, barcode_type, self.get_current_timestamp(), self.location, self.construction_number)
+            data = self.data_collector.collect(barcode_info, barcode_type, self.get_current_timestamp(), self.location, self.construction_number, self.worker_name)
             self.logger.info("手動登録: %s", data)
             print(f"Manually Registered: {barcode_info} Type: {barcode_type}")
-
-            with open(self.csv_file, mode='a', newline='', encoding='utf-8') as file:
-                writer = csv.writer(file)
-                writer.writerow(data.values())
+            self.csv_writer.write(data)
 
             self.add_scanned_info(barcode_info, barcode_type)
             self.last_scan_time = time.time() # アイドルタイムリセット
@@ -203,14 +200,10 @@ class BarcodeScanner:
                 self.barcode_data.append(barcode_info)
                 self.scan_count += 1 # スキャン数としてカウント（手動登録も1件として）
                 self.success_count += 1
-                data = self.data_collector.collect(barcode_info, barcode_type, self.get_current_timestamp(), self.location, self.construction_number)
+                data = self.data_collector.collect(barcode_info, barcode_type, self.get_current_timestamp(), self.location, self.construction_number, self.worker_name)
                 self.logger.info(f"図番手動登録 ({barcode_type}): {data} (部品情報: {selected_part_info})")
                 print(f"Manually Registered (Drawing): {barcode_info} Type: {barcode_type}")
-
-                # CSVへの書き込み (単体起動時と通常起動時で共通化)
-                with open(self.csv_file, mode='a', newline='', encoding='utf-8') as file:
-                    writer = csv.writer(file)
-                    writer.writerow(data.values())
+                self.csv_writer.write(data)
 
                 self.add_scanned_info(barcode_info, barcode_type)
                 self.last_scan_time = time.time() # アイドルタイムリセット
@@ -222,15 +215,6 @@ class BarcodeScanner:
     def start(self):
         cap = cv2.VideoCapture(self.config.get("camera_index", 0))
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.config.get("camera_width", 640))
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.config.get("camera_height", 480))
-
-        # data.csv を上書きモードで初期化（単体起動時のみ）
-        if __name__ == "__main__":
-            with open(self.csv_file, mode='w', newline='', encoding='utf-8') as file:
-                # ヘッダー行が必要な場合はここで書き込む (例)
-                # writer = csv.writer(file)
-                # writer.writerow(["barcode_info", "construction_number", "location", "barcode_type", "timestamp"])
-                pass # 初期化のみ行う
 
         while True:
             current_time = time.time()
@@ -262,14 +246,9 @@ class BarcodeScanner:
                         self.barcode_data.append(barcode_info)
                         self.scan_count += 1
                         self.success_count += 1  # 成功したスキャン数を更新
-                        data = self.data_collector.collect(barcode_info, barcode_type, self.get_current_timestamp(), self.location, self.construction_number)
+                        data = self.data_collector.collect(barcode_info, barcode_type, self.get_current_timestamp(), self.location, self.construction_number, self.worker_name)
                         self.logger.info("スキャン結果: %s", data)
                         print(f"Scanned Barcode: {barcode_info} Type: {barcode_type}")
-
-                        # CSVファイルへの書き込み
-                        with open(self.csv_file, mode='a', newline='', encoding='utf-8') as file:
-                            writer = csv.writer(file)
-                            writer.writerow(data.values())
 
                         #scanned_infoへの追加
                         self.add_scanned_info(barcode_info, barcode_type)

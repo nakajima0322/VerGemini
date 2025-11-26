@@ -1,4 +1,4 @@
-﻿import csv
+﻿﻿import csv
 import os
 from typing import List, Dict # AnyをDictに変更検討
 from G_config import Config  # G_config.py が同じディレクトリかPYTHONPATHにある前提
@@ -20,32 +20,33 @@ def _normalize_id_string(id_str: str) -> str:
 
 def load_scan_data(filepath: str) -> List[Dict[str, str]]:
 
-    """
-    スキャンデータCSV (例: 3804.csv) を読み込み、
-    各要素が {"barcode": バーコード値, "location": 保管場所の値} の辞書であるリストを返します。
-    想定されるCSVの列: 0番目がバーコード情報、2番目が保管場所情報。
-    """
+    """スキャンデータCSVを読み込む。ヘッダーの有無を自動判別。"""
     scanned_items: List[Dict[str, str]] = []
     if not os.path.exists(filepath):
         print(f"エラー: スキャンデータファイルが見つかりません: {filepath}")
         return scanned_items
     try:
         with open(filepath, mode='r', newline='', encoding='utf-8') as file:
-            reader = csv.reader(file)
-            # G_ScanBCD_Scanner.py の出力にはヘッダーがない想定
-            for row_number, row in enumerate(reader, 1):
-                if row and len(row) > 0:
-                    barcode_value = row[0].strip() # バーコードは0列目
-                    location_value = ""  # デフォルトは空文字
-                    if len(row) >= 3:  # 保管場所情報が期待される3列目 (インデックス2) にあるか
-                        location_value = row[2].strip()
-                    else:
-                        print(f"情報: スキャンデータファイル ({filepath}) の {row_number}行目に保管場所情報がありません (列数: {len(row)})。保管場所は空として扱います。")
+            first_line = file.readline()
+            file.seek(0)
+            
+            # ヘッダーの有無を判定
+            if "barcode_info" in first_line: # ヘッダーあり
+                reader = csv.DictReader(file)
+                for row in reader:
+                    barcode = row.get("barcode_info", "").strip()
+                    location = row.get("location", "").strip()
+                    if barcode:
+                        scanned_items.append({"barcode": barcode, "location": location})
+            else: # ヘッダーなし (古い形式)
+                reader = csv.reader(file)
+                for row in reader:
+                    if len(row) >= 3:
+                        barcode = row[0].strip()
+                        location = row[2].strip()
+                        if barcode:
+                            scanned_items.append({"barcode": barcode, "location": location})
 
-                    if barcode_value:  # 空のバーコードは無視
-                        scanned_items.append({"barcode": barcode_value, "location": location_value})
-                    else:
-                        print(f"情報: スキャンデータファイル ({filepath}) の {row_number}行目に空のバーコード値がありました。スキップします。")
         if not scanned_items:
             print(f"情報: スキャンデータファイル ({filepath}) は空か、有効なデータがありませんでした。")
     except Exception as e:

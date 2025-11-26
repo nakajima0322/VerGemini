@@ -337,11 +337,12 @@ class ConfigEditorApp:
         ttk.Label(header_frame, text="表示名", font=("TkDefaultFont", 9, "bold")).grid(row=0, column=1, sticky="w")
 
         # スクロール可能な領域のコンテナ
+        # containerフレームを作成し、その中にCanvasとScrollbarを配置する
         container = ttk.Frame(self.tab_mapping)
-        container.pack(fill="both", expand=True)
+        container.pack(fill="both", expand=True, pady=(0, 5))
         
-        self.mapping_canvas = tk.Canvas(self.tab_mapping)
-        scrollbar = ttk.Scrollbar(self.tab_mapping, orient="vertical", command=self.mapping_canvas.yview)
+        self.mapping_canvas = tk.Canvas(container)
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self.mapping_canvas.yview)
         self.scrollable_frame = ttk.Frame(self.mapping_canvas)
 
         self.scrollable_frame.bind("<Configure>", lambda e: self.mapping_canvas.configure(scrollregion=self.mapping_canvas.bbox("all")))
@@ -354,7 +355,7 @@ class ConfigEditorApp:
         self.scrollable_frame.columnconfigure(2, weight=0)
 
         self.mapping_canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        scrollbar.pack(side="right", fill="y") # containerの右側に配置
 
         add_button = ttk.Button(self.tab_mapping, text="マッピングを追加", command=self._add_mapping_row)
         add_button.pack(side="bottom", pady=5)
@@ -621,9 +622,22 @@ class ConfigEditorApp:
                     for i in range(3):
                         info["vars"][i].set(str(value[i] if value and len(value) > i else 0))
         
-        if "display_text_mapping" in self.config_data:
-            for i, (k, v) in enumerate(self.config_data["display_text_mapping"].items()):
-                self._add_mapping_row(k, v, row_index=i)
+        # --- マッピングデータの読み込みと自動追加 ---
+        mapping_data = self.config_data.get("display_text_mapping", OrderedDict())
+        
+        # process_definitions と supplier_list から未登録の項目を収集
+        all_possible_keys = set(mapping_data.keys())
+        all_possible_keys.update(self.config_data.get("process_definitions", []))
+        all_possible_keys.update(self.config_data.get("supplier_list", []))
+
+        # 既存のマッピングに未登録のキーを追加
+        for key in sorted(list(all_possible_keys)):
+            if key not in mapping_data:
+                mapping_data[key] = "" # 空の値で追加
+
+        # UIに表示
+        for i, (k, v) in enumerate(mapping_data.items()):
+            self._add_mapping_row(k, v, row_index=i)
 
         # ウィンドウジオメトリのデータを読み込む
         screen_width = self.root.winfo_screenwidth()

@@ -1,10 +1,16 @@
 {
     "___ACTIVE_SETTINGS___": "--- 現在有効な設定 ---",
     "process_definitions": [
-        "追加工程なし（完成品）",
-        "無電解ニッケルメッキ",
-        "塗装",
-        "ユニクロメッキ"
+        "完品",
+        "Ni-p5",
+        "Zn8b/3価",
+        "ユニクロ",
+        "塗装"
+    ],
+    "supplier_list": [
+        "シモノ",
+        "シャトル",
+        "田中精機"
     ],
     "auto_stop": true,
     "barcode_type": "CODE39",
@@ -21,7 +27,12 @@
         "カブト2F": "Kabuto 2F",
         "コンテナ": "Container",
         "棚": "Shelf",
-        "棚（箱）": "Shelf (Box)"
+        "棚（箱）": "Shelf (Box)",
+        "追加工程なし（完成品）": "Finished Product",
+        "Ni-P5": "Ni-P5 Plating",
+        "Ni-P5_FC200": "Ni-P5 Plating (Cast Iron)",
+        "塗装": "Painting",
+        "ユニクロメッキ": "Unichrome Plating"
     },
     "display_time": 300,
     "expected_length": 10,
@@ -48,11 +59,11 @@
     "source_csv_supplier_column": "仕入先",
     "target_fps": 30,
     "___STATE_AND_HISTORY___": "--- 前回終了時の状態（自動更新） ---",
-    "last_construction_no_part_viewer": "",
-    "last_construction_number": "9999",
+    "last_construction_no_part_viewer": "7405",
+    "last_construction_number": "7405",
     "last_construction_number_scanner": "9999",
     "last_filter_start_value": "0",
-    "last_location_filter_viewer": "コンテナ",
+    "last_location_filter_viewer": "",
     "last_sort_length": "4",
     "last_sort_start_index": "8",
     "last_source_csv_path": "C:/temp/KHT_Python/VerGemini/Source/3804s.csv",
@@ -70,5 +81,12 @@
     "location": null,
     "no_barcode_current_id": "9999999997",
     "scan_count": 0,
-    "scanned_info": []
+    "scanned_info": [],
+    "worker_list": [
+        "中島",
+        "作業者A",
+        "作業者B",
+        "作業者C"
+    ],
+    "current_worker": "中島"
 }
