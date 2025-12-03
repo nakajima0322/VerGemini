@@ -1,27 +1,5 @@
 {
     "___ACTIVE_SETTINGS___": "--- 現在有効な設定 ---",
-    "process_definitions": [
-        "AA30/硬質",
-        "AA10/黒",
-        "AA6",
-        "Ni-p5",
-        "Zn8b/3価",
-        "ユニクロ",
-        "塗装",
-        "完品"
-    ],
-    "supplier_list": [
-        "シモノ",
-        "シャトル",
-        "田中精機"
-    ],
-    "location_list": [
-        "カブト1F",
-        "カブト2F",
-        "コンテナ",
-        "棚",
-        "棚（箱）"
-    ],
     "auto_stop": true,
     "barcode_type": "CODE39",
     "camera_height": 480,
@@ -75,8 +53,8 @@
         "size_too_large_threshold": 148000
     },
     "___STATE_AND_HISTORY___": "--- 前回終了時の状態（自動更新） ---",
-    "last_construction_no_part_viewer": "3804",
-    "last_construction_number": "7405",
+    "last_construction_no_part_viewer": "",
+    "last_construction_number": "3804",
     "last_construction_number_scanner": "9999",
     "last_filter_start_value": "0",
     "last_location_filter_viewer": "",
