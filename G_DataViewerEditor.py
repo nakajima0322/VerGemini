@@ -6,6 +6,7 @@ import os
 import shutil
 from G_config import Config
 
+
 class DataViewerEditor:
     def __init__(self, root, config):
         self.root = root
@@ -14,6 +15,10 @@ class DataViewerEditor:
         self.data_dir = self.config.get("data_dir", "data")
         self.current_filepath = None
         self.header = []
+
+        # ウィンドウ終了時の処理をバインド
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.root.bind("<Escape>", lambda e: self.on_closing())
 
         # --- UI構築 ---
         main_frame = ttk.Frame(root, padding="10")
@@ -26,14 +31,26 @@ class DataViewerEditor:
         file_frame.grid(row=0, column=0, sticky="ew", pady=5)
         file_frame.columnconfigure(1, weight=1)
 
-        ttk.Label(file_frame, text="工事番号:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        ttk.Label(file_frame, text="工事番号:").grid(
+            row=0, column=0, padx=5, pady=5, sticky="w"
+        )
         self.cn_entry = ttk.Entry(file_frame, width=15)
         self.cn_entry.grid(row=0, column=1, padx=5, pady=5, sticky="w")
         self.cn_entry.insert(0, self.config.get("last_construction_number", ""))
 
         self.file_type_var = tk.StringVar(value="processed")
-        ttk.Radiobutton(file_frame, text="工程データ (_processed.csv)", variable=self.file_type_var, value="processed").grid(row=1, column=0, columnspan=2, sticky="w", padx=5)
-        ttk.Radiobutton(file_frame, text="場所データ (.csv)", variable=self.file_type_var, value="location").grid(row=2, column=0, columnspan=2, sticky="w", padx=5)
+        ttk.Radiobutton(
+            file_frame,
+            text="工程データ (_processed.csv)",
+            variable=self.file_type_var,
+            value="processed",
+        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=5)
+        ttk.Radiobutton(
+            file_frame,
+            text="場所データ (.csv)",
+            variable=self.file_type_var,
+            value="location",
+        ).grid(row=2, column=0, columnspan=2, sticky="w", padx=5)
 
         load_button = ttk.Button(file_frame, text="読み込み", command=self.load_data)
         load_button.grid(row=1, column=2, rowspan=2, padx=10)
@@ -46,7 +63,7 @@ class DataViewerEditor:
 
         self.tree = ttk.Treeview(data_frame, show="headings")
         self.tree.grid(row=0, column=0, sticky="nsew")
-        
+
         vsb = ttk.Scrollbar(data_frame, orient="vertical", command=self.tree.yview)
         vsb.grid(row=0, column=1, sticky="ns")
         hsb = ttk.Scrollbar(data_frame, orient="horizontal", command=self.tree.xview)
@@ -59,10 +76,20 @@ class DataViewerEditor:
         action_frame = ttk.Frame(main_frame)
         action_frame.grid(row=2, column=0, sticky="ew", pady=10)
 
-        self.save_button = ttk.Button(action_frame, text="保存", command=self.save_data, state=tk.DISABLED)
+        self.save_button = ttk.Button(
+            action_frame, text="保存", command=self.save_data, state=tk.DISABLED
+        )
         self.save_button.pack(side=tk.RIGHT, padx=5)
-        self.delete_button = ttk.Button(action_frame, text="選択行を削除", command=self.delete_selected_row, state=tk.DISABLED)
+        self.delete_button = ttk.Button(
+            action_frame,
+            text="選択行を削除",
+            command=self.delete_selected_row,
+            state=tk.DISABLED,
+        )
         self.delete_button.pack(side=tk.RIGHT)
+
+        # 起動時にウィンドウの位置とサイズを復元
+        self._restore_geometry()
 
     def load_data(self):
         cn = self.cn_entry.get().strip()
@@ -75,28 +102,78 @@ class DataViewerEditor:
         self.current_filepath = os.path.join(self.data_dir, filename)
 
         if not os.path.exists(self.current_filepath):
-            messagebox.showerror("エラー", f"ファイルが見つかりません:\n{self.current_filepath}")
+            messagebox.showerror(
+                "エラー", f"ファイルが見つかりません:\n{self.current_filepath}"
+            )
             return
 
         self.tree.delete(*self.tree.get_children())
 
         try:
-            with open(self.current_filepath, 'r', encoding='utf-8', newline='') as f:
-                reader = csv.reader(f)
-                self.header = next(reader)
+            with open(self.current_filepath, "r", encoding="utf-8", newline="") as f:
+                # DictReaderを使用して、列名でデータにアクセスしやすくする
+                reader = csv.DictReader(f)
+                self.header = reader.fieldnames
+                if not self.header:
+                    messagebox.showinfo("情報", "ファイルが空です。")
+                    return
+
+                # ソートキーを決定
+                sort_key_column = None
+                if file_type == "location" and "timestamp" in self.header:
+                    sort_key_column = "timestamp"
+                elif file_type == "processed" and "work_session_id" in self.header:
+                    sort_key_column = "work_session_id"
+
+                # --- データを読み込み、ソート ---
+                all_data = list(reader)
+
+                # --- Treeviewの列設定 ---
                 self.tree["columns"] = self.header
+                total_width = 0  # 列の合計幅を計算するための変数を初期化
                 for col in self.header:
+                    # configから列幅を取得。なければデフォルト値を使用
+                    column_widths = self.config.get("data_viewer_column_widths", {})
+                    default_width = column_widths.get("__default__", 120)
+                    col_width = column_widths.get(col, default_width)
                     self.tree.heading(col, text=col)
-                    self.tree.column(col, width=120)
-                
-                for i, row in enumerate(reader):
-                    self.tree.insert("", "end", iid=i, values=row)
-            
+                    self.tree.column(col, width=col_width, stretch=tk.NO)
+                    total_width += col_width  # 合計幅に加算
+
+                # --- ウィンドウ幅の自動調整 ---
+                # スクロールバー(約20px)とウィンドウ枠の余白(約20px)を追加
+                required_width = total_width + 40
+                try:
+                    # 現在のウィンドウの高さと位置を取得
+                    current_geometry = self.root.winfo_geometry()
+                    _, current_height, current_x, current_y = current_geometry.replace(
+                        "x", "+"
+                    ).split("+")
+                    self.root.geometry(
+                        f"{required_width}x{current_height}+{current_x}+{current_y}"
+                    )
+                except Exception as e:
+                    print(f"ウィンドウ幅の自動調整中にエラーが発生しました: {e}")
+
+                # ソートキーが存在すれば、降順でソート
+                if sort_key_column:
+                    all_data.sort(
+                        key=lambda row: row.get(sort_key_column, ""), reverse=True
+                    )
+
+                # ソートされたデータをTreeviewに挿入
+                for i, row_dict in enumerate(all_data):
+                    # ヘッダーの順序に従って値のリストを作成
+                    values_in_order = [row_dict.get(col, "") for col in self.header]
+                    self.tree.insert("", "end", iid=i, values=values_in_order)
+
             self.save_button.config(state=tk.NORMAL)
             self.delete_button.config(state=tk.NORMAL)
 
         except Exception as e:
-            messagebox.showerror("読み込みエラー", f"ファイルの読み込み中にエラーが発生しました:\n{e}")
+            messagebox.showerror(
+                "読み込みエラー", f"ファイルの読み込み中にエラーが発生しました:\n{e}"
+            )
 
     def on_double_click(self, event):
         item_id = self.tree.identify_row(event.y)
@@ -104,7 +181,7 @@ class DataViewerEditor:
             return
 
         column = self.tree.identify_column(event.x)
-        col_index = int(column.replace('#', '')) - 1
+        col_index = int(column.replace("#", "")) - 1
 
         x, y, width, height = self.tree.bbox(item_id, column)
 
@@ -130,7 +207,7 @@ class DataViewerEditor:
         if not selected_items:
             messagebox.showwarning("警告", "削除する行を選択してください。")
             return
-        
+
         if messagebox.askyesno("確認", f"{len(selected_items)}行を削除しますか？"):
             for item in selected_items:
                 self.tree.delete(item)
@@ -139,39 +216,66 @@ class DataViewerEditor:
         if not self.current_filepath:
             return
 
-        if not messagebox.askyesno("確認", f"変更をファイルに保存しますか？\n{self.current_filepath}\n\n(元のファイルは .bak としてバックアップされます)"):
+        if not messagebox.askyesno(
+            "確認",
+            f"変更をファイルに保存しますか？\n{self.current_filepath}\n\n(元のファイルは .bak としてバックアップされます)",
+        ):
             return
 
         try:
             # バックアップ作成
             shutil.copy2(self.current_filepath, self.current_filepath + ".bak")
 
-            with open(self.current_filepath, 'w', encoding='utf-8', newline='') as f:
+            with open(self.current_filepath, "w", encoding="utf-8", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerow(self.header)
                 for item_id in self.tree.get_children():
                     row = self.tree.item(item_id, "values")
                     writer.writerow(row)
-            
+
             messagebox.showinfo("成功", "ファイルの保存が完了しました。")
 
         except Exception as e:
-            messagebox.showerror("保存エラー", f"ファイルの保存中にエラーが発生しました:\n{e}")
+            messagebox.showerror(
+                "保存エラー", f"ファイルの保存中にエラーが発生しました:\n{e}"
+            )
+
+    def on_closing(self):
+        """ウィンドウが閉じられるときに呼び出される処理"""
+        self._save_geometry()
+        self.config.save_config()  # 念のため保存
+        self.root.destroy()
+
+    def _save_geometry(self):
+        """現在のウィンドウジオメトリをconfigに保存する"""
+        geometries = self.config.get("window_geometries", {})
+        geometries[self.__class__.__name__] = self.root.winfo_geometry()
+        self.config.set("window_geometries", geometries)
+
+    def _restore_geometry(self):
+        """configからウィンドウジオメトリを復元する"""
+        geometries = self.config.get("window_geometries", {})
+        geometry = geometries.get(self.__class__.__name__)
+        if geometry:
+            self.root.geometry(geometry)
+
 
 if __name__ == "__main__":
     try:
         config = Config("config.json")
         root = tk.Tk()
         app = DataViewerEditor(root, config)
-        
+
         # ウィンドウを中央に表示
         root.update_idletasks()
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
         x = (screen_width // 2) - (root.winfo_width() // 2)
         y = (screen_height // 2) - (root.winfo_height() // 2)
-        root.geometry(f'+{x}+{y}')
+        root.geometry(f"+{x}+{y}")
 
         root.mainloop()
     except Exception as e:
-        messagebox.showerror("起動エラー", f"データビューア/エディタの起動に失敗しました:\n{e}")
+        messagebox.showerror(
+            "起動エラー", f"データビューア/エディタの起動に失敗しました:\n{e}"
+        )

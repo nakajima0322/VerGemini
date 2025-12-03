@@ -6,7 +6,7 @@ from tkinter import messagebox
 class LocationSelector:
     # 要求される設定値のキー
     REQUIRED_KEYS = {
-        "display_text_mapping",
+        "location_list",
         "default_construction_number",
         "default_location",
         "csv_file",
@@ -25,7 +25,7 @@ class LocationSelector:
         self.scan_log =             self.config.get("scan_log")
         self.barcode_type =         self.config.get("barcode_type")
         self.expected_length =      self.config.get("expected_length")
-        self.display_text_mapping = self.config.get("display_text_mapping") 
+        self.locations =            self.config.get("location_list", [])
 
         missing_keys=[]
         for key in self.REQUIRED_KEYS:
@@ -103,11 +103,9 @@ class LocationSelector:
         # 場所選択の説明
         tk.Label(root, text="場所を選択してください", font=("Arial", 10)).pack(padx=10)
 
-        locations = list(self.display_text_mapping.keys())
-
         # ボタンで選択する方法
         location_buttons = []  # ボタンを格納するリスト
-        for loc in locations:
+        for loc in self.locations:
             button = tk.Button(root, text=loc, font=("Arial", 10), command=lambda location_name=loc: self._select_location_by_button(location_name, construction_entry, root), width=10)
             button.pack(pady=2)
             location_buttons.append(button)  # ボタンをリストに追加

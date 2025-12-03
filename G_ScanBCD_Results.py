@@ -30,6 +30,9 @@ class ResultDisplay:
 		close_button = tk.Button(root, text="閉じる", command=root.destroy, font=("Helvetica", 14))
 		close_button.pack(pady=10)
 
+		# ESCキーでウィンドウを閉じる
+		root.bind("<Escape>", lambda e: root.destroy())
+
 		# ウィンドウのサイズを自動調整
 		root.update_idletasks()  # ウィジェットのサイズを計算
 		extra_width = 50  # 幅方向に余裕を追加

@@ -88,17 +88,33 @@ class CSVHandler:
             print(f"⚠ エラーが発生しました: {e}")
 
     def _find_invalid_rows(self, data):
-        """不正な行を見つける。バーコード長のみをチェックするシンプルなロジックに。"""
+        """不正な行を見つける。バーコードの長さと文字種をチェックする。"""
         invalid_rows = []
         for row in data:
-            # 列数はload_csvでチェック済み
             barcode_info = row.get(self.primary_key_col, "")
-            
-            # バーコード長チェック
+            is_invalid = False
+
+            # barcode_typeはlocationファイルにしか存在しないため、存在しない場合は空文字列とする
+            barcode_type = row.get("barcode_type", "")
+
+            # 1. バーコード長チェック
+            # processファイルはbarcode_type列がないため、MANUALチェックは適用しない
+            # locationファイルでbarcode_typeがMANUALの場合は長さチェックをスキップ
             if len(barcode_info) != self.expected_length:
-                print(f"⚠ バーコード長が異なります: {barcode_info} (期待値: {self.expected_length})")
+                if not (self.file_type == 'location' and barcode_type == "MANUAL"):
+                    print(f"⚠ [不正検出] バーコード長が異なります: '{barcode_info}' (期待値: {self.expected_length})")
+                    is_invalid = True
+
+            # 2. 文字種チェック (数字以外が含まれていないか)
+            # processファイルは常に数字のみを期待
+            # locationファイルでbarcode_typeがMANUALの場合は文字種チェックをスキップ
+            if not (self.file_type == 'location' and barcode_type == "MANUAL"):
+                if not barcode_info.isdigit():
+                    print(f"⚠ [不正検出] バーコードに数字以外の文字が含まれています: '{barcode_info}'")
+                    is_invalid = True
+
+            if is_invalid and row not in invalid_rows:
                 invalid_rows.append(row)
-                continue
         return invalid_rows
 
     def find_duplicates_and_invalid_rows(self):

@@ -1,0 +1,24 @@
+{
+    // -------------------------------------------------------------------------
+    // ■ フォーマッターとリンターの設定
+    // -------------------------------------------------------------------------
+
+    // ファイルの種類ごとにデフォルトのフォーマッターを指定
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true // 保存時に自動でフォーマット
+    },
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "[markdown]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+
+    // Ruffをリンターおよびフォーマッターとして有効にする
+    "ruff.enable": true,
+    "ruff.organizeImports": true, // import文の自動整理も有効にする
+
+}

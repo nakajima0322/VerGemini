@@ -172,6 +172,7 @@ class ProcessScanner:
         cap.release()
         cv2.destroyAllWindows()
         print("工程スキャナーのメインループを終了しました。")
+        print(f"スキャン結果: {self.scan_count} 件のバーコードを検出しました。")
 
     def display_scan_result(self, frame, barcodes, remaining_time):
         # OverlayDisplay を使用 (locationの代わりにprocess_nameを渡す)
