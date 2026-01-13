@@ -39,7 +39,7 @@ class BarcodeScanner:
         "idle_timeout",
     }
 
-    def __init__(self, config, location, construction_number):
+    def __init__(self, config, location, construction_number, supplier=None):
         self.config = config
 
         missing_keys = []
@@ -69,6 +69,10 @@ class BarcodeScanner:
         self.manual_drawing_barcode_type = self.config.get(
             "manual_entry_drawing_barcode_type", "MANUAL_DRAWING"
         )  # 新しいタイプ
+
+        # 納品時情報
+        self.supplier = supplier if supplier else ""
+
 
         self.location = location
         self.construction_number = construction_number
@@ -275,15 +279,20 @@ class BarcodeScanner:
                 0, self.idle_timeout - (time.time() - self.last_scan_time)
             )
 
+            # オーバーレイに渡すコンテキストラベルを作成
+            text_mapping = self.config.get("display_text_mapping", {})
+            display_location = text_mapping.get(self.location, self.location)
+            context_label = f"場所: {display_location} | 業者: {self.supplier}"
+
             # オーバーレイを描画
             frame = self.overlay_display.display_overlay(
                 frame,
                 barcodes,
                 self.scan_count,
-                self.success_count,
-                self.failure_count,
+                self.success_count, # 引数を追加
+                self.failure_count, # 引数を追加
                 self.duplicate_count,
-                self.location,
+                context_label, # 整形したラベルを渡す
                 self.construction_number,
                 remaining_time,
                 self.barcode_type,
@@ -294,6 +303,9 @@ class BarcodeScanner:
                 self.last_scan_time = time.time()
 
             for barcode in barcodes:
+                # バーコードを検出した瞬間のタイムスタンプを取得
+                scanned_timestamp = self.get_current_timestamp()
+
                 barcode_info = barcode.data.decode("utf-8")
                 barcode_type = barcode.type
                 if (
@@ -307,7 +319,7 @@ class BarcodeScanner:
                         data = self.data_collector.collect(
                             barcode_info,
                             barcode_type,
-                            self.get_current_timestamp(),
+                            scanned_timestamp,  # 取得したタイムスタンプを使用
                             self.location,
                             self.construction_number,
                             self.worker_name,
@@ -319,6 +331,8 @@ class BarcodeScanner:
                         self.add_scanned_info(barcode_info, barcode_type)
                     else:
                         self.duplicate_count += 1  # 重複したスキャン数を更新
+                else:
+                    self.failure_count += 1 # 不正なバーコードのため失敗カウントを増やす
 
             if frame is not None and isinstance(frame, np.ndarray):
                 cv2.imshow("Barcode Scanner", frame)
@@ -372,7 +386,7 @@ class BarcodeScanner:
 
     def get_current_timestamp(self):
         # ... (タイムスタンプ取得) ...
-        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
 if __name__ == "__main__":

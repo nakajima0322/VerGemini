@@ -6,17 +6,21 @@ import cv2
 import time
 import os
 import logging
-from logging.handlers           import RotatingFileHandler
+from logging.handlers import RotatingFileHandler
+from datetime import datetime
+import tkinter as tk # 画面サイズの取得のためにインポート
 import numpy as np
 
 # カスタムモジュールのインポート
 from G_config import Config
-from G_ScanBCD_Analyzer         import G_ScanBCD_Analyzer
-from G_ProcessCsvWriter         import G_ProcessCsvWriter # G_ScanBCD_CsvWriter から変更
-from G_ScanBCD_Overlay          import OverlayDisplay
+from G_ScanBCD_Analyzer import G_ScanBCD_Analyzer
+from G_ProcessCsvWriter import G_ProcessCsvWriter  # G_ScanBCD_CsvWriter から変更
+from G_Shared_CountWindow import CountDisplayWindow # 別ウィンドウ表示用
+from G_ScanBCD_Overlay import OverlayDisplay
 
 # ターミナル出力時文字化け対策
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
+
 
 class ProcessScanner:
     REQUIRED_KEYS = {
@@ -26,56 +30,64 @@ class ProcessScanner:
         "display_time",
         "target_fps",
         "auto_stop",
-        "idle_timeout"
+        "idle_timeout",
     }
 
     def __init__(self, config, construction_number, process_name, supplier_name):
         self.config = config
 
-        missing_keys=[]
+        missing_keys = []
         for key in self.REQUIRED_KEYS:
             if self.config.get(key) is None:
-                  missing_keys.append(key)
+                missing_keys.append(key)
         if missing_keys:
-            raise ValueError(f"設定ファイルに以下のキーが存在しません: {', '.join(missing_keys)}")
-        
+            raise ValueError(
+                f"設定ファイルに以下のキーが存在しません: {', '.join(missing_keys)}"
+            )
+
         # 設定値の取得
-        self.scan_log =         self.config.get("scan_log")
-        self.expected_length =  self.config.get("expected_length")
-        self.barcode_type =     self.config.get("barcode_type")
-        self.display_time =     self.config.get("display_time")
-        self.target_fps =       self.config.get("target_fps")
-        self.auto_stop =        self.config.get("auto_stop")
-        self.idle_timeout =     self.config.get("idle_timeout")
+        self.scan_log = self.config.get("scan_log")
+        self.expected_length = self.config.get("expected_length")
+        self.barcode_type = self.config.get("barcode_type")
+        self.display_time = self.config.get("display_time")
+        self.target_fps = self.config.get("target_fps")
+        self.auto_stop = self.config.get("auto_stop")
+        self.idle_timeout = self.config.get("idle_timeout")
 
         # 引数から受け取る情報
-        self.construction_number =  construction_number
-        self.process_name =         process_name
-        self.supplier_name =        supplier_name
+        self.construction_number = construction_number
+        self.process_name = process_name
+        self.supplier_name = supplier_name
 
         # 内部状態変数
-        self.last_scan_time =       time.time()
-        self.success_count =    0
-        self.failure_count =    0
-        self.duplicate_count =  0
-        self.scan_count =       0
-        self.last_frame_time =  0
-        self.barcode_data =     [] # このセッションでスキャンしたバーコードを保持
+        self.last_scan_time = time.time()
+        self.success_count = 0
+        self.failure_count = 0
+        self.duplicate_count = 0
+        self.scan_count = 0
+        self.last_frame_time = 0
+        self.barcode_data = []  # このセッションでスキャンしたバーコードを保持
+        self.count_window = None # カウント表示ウィンドウ用の変数を追加
 
         # ログ設定
         self._setup_logging()
 
         # 各種モジュールの初期化
-        self.analyzer =         G_ScanBCD_Analyzer(config)
+        self.analyzer = G_ScanBCD_Analyzer(config)
         # G_ProcessCsvWriter を使用するように変更
-        self.csv_writer =       G_ProcessCsvWriter(config, self.construction_number, self.process_name, self.supplier_name)
-        self.overlay_display =  OverlayDisplay(config)
+        self.csv_writer = G_ProcessCsvWriter(
+            config, self.construction_number, self.process_name, self.supplier_name
+        ) # CsvWriterはstatus列を追加するので、ここでは引数不要
+
+        self.overlay_display = OverlayDisplay(config)
 
         # ディレクトリの作成
         self._create_data_dir()
 
         print("\n工程スキャナー起動中...")
-        print(f"工事番号: {self.construction_number}, 工程: {self.process_name}, 納品業者: {self.supplier_name}")
+        print(
+            f"工事番号: {self.construction_number}, 工程: {self.process_name}, 納品業者: {self.supplier_name}"
+        )
 
     def _setup_logging(self):
         log_dir = self.config.get("log_dir", "log")
@@ -84,8 +96,10 @@ class ProcessScanner:
         self.scan_log = os.path.join(log_dir, self.config.get("scan_log", "scan.log"))
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
-        handler = RotatingFileHandler(self.scan_log, maxBytes=1024*1024, backupCount=5, encoding='utf-8')
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        handler = RotatingFileHandler(
+            self.scan_log, maxBytes=1024 * 1024, backupCount=5, encoding="utf-8"
+        )
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
 
@@ -102,6 +116,27 @@ class ProcessScanner:
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.config.get("camera_width", 640))
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.config.get("camera_height", 480))
 
+        # ウィンドウの作成と位置設定をループの外で一度だけ行う
+        window_name = "Process Scanner"
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+
+        # configから画面幅と高さを取得
+        camera_width = self.config.get("camera_width", 640)
+        camera_height = self.config.get("camera_height", 480)
+
+        # Tkinterを使って画面サイズを取得し、ウィンドウ位置を計算する
+        try:
+            root = tk.Tk()
+            root.withdraw() # メインウィンドウは表示しない
+            screen_width = root.winfo_screenwidth()
+            x = screen_width - camera_width - 10
+            y = 10
+            cv2.moveWindow(window_name, x, y)
+            root.destroy() # 不要になったTkinterルートを破棄
+            cv2.resizeWindow(window_name, camera_width, camera_height) # 明示的にサイズを設定
+        except Exception as e:
+            print(f"ウィンドウ位置の設定中にエラーが発生しました: {e}")
+
         while True:
             current_time = time.time()
             elapsed_time = current_time - self.last_frame_time
@@ -116,7 +151,9 @@ class ProcessScanner:
             barcodes, frame = self.analyzer.analyze(frame)
 
             # 残り時間を計算
-            remaining_time = max(0, self.idle_timeout - (time.time() - self.last_scan_time))
+            remaining_time = max(
+                0, self.idle_timeout - (time.time() - self.last_scan_time)
+            )
 
             # オーバーレイを描画 (locationの代わりにprocess_nameを渡す)
             frame = self.display_scan_result(frame, barcodes, remaining_time)
@@ -125,17 +162,25 @@ class ProcessScanner:
                 self.last_scan_time = time.time()
 
             for barcode in barcodes:
-                barcode_info = barcode.data.decode('utf-8')
+                # バーコードを検出した瞬間のタイムスタンプを取得
+                scanned_timestamp = self.get_current_timestamp()
+
+                barcode_info = barcode.data.decode("utf-8")
                 barcode_type = barcode.type
-                if barcode_type == self.barcode_type and len(barcode_info) == self.expected_length:
+                if (
+                    barcode_type == self.barcode_type
+                    and len(barcode_info) == self.expected_length
+                ):
                     if barcode_info not in self.barcode_data:
                         self.barcode_data.append(barcode_info)
                         self.scan_count += 1
                         self.success_count += 1
-                        
+
                         # G_ProcessCsvWriter を使って書き込み
-                        self.csv_writer.write(barcode_info, barcode_type)
-                        
+                        self.csv_writer.write(
+                            barcode_info, barcode_type, scanned_timestamp
+                        )
+
                         log_message = f"工程スキャン: {barcode_info}, 工事番号: {self.construction_number}, 工程: {self.process_name}, 業者: {self.supplier_name}"
                         self.logger.info(log_message)
                         print(f"Scanned: {barcode_info} (Type: {barcode_type})")
@@ -143,27 +188,22 @@ class ProcessScanner:
                         self.add_scanned_info(barcode_info, barcode_type)
                     else:
                         self.duplicate_count += 1
+                else:
+                    self.failure_count += 1 # 不正なバーコードのため失敗カウントを増やす
 
             if frame is not None and isinstance(frame, np.ndarray):
-                cv2.imshow('Process Scanner', frame)
+                cv2.imshow(window_name, frame)
             else:
                 print("Error: Invalid frame received.")
 
-            # ウィンドウの位置を右側に寄せる
-            screen_width = 1366
-            window_width = 640
-            x = screen_width - window_width - 10
-            y = 10
-
-            cv2.namedWindow('Process Scanner', cv2.WINDOW_NORMAL)
-            cv2.moveWindow('Process Scanner', x, y)
-
             if self.auto_stop and remaining_time == 0:
-                print(f"{self.idle_timeout / 60}分間バーコードが読み込まれなかったため、スキャンを停止します。")
+                print(
+                    f"{self.idle_timeout / 60}分間バーコードが読み込まれなかったため、スキャンを停止します。"
+                )
                 break
 
             key = cv2.waitKey(1) & 0xFF
-            if key == ord('q') or key == 27:
+            if key == ord("q") or key == 27:
                 print("スキャナー停止")
                 break
 
@@ -171,26 +211,40 @@ class ProcessScanner:
 
         cap.release()
         cv2.destroyAllWindows()
+
         print("工程スキャナーのメインループを終了しました。")
         print(f"スキャン結果: {self.scan_count} 件のバーコードを検出しました。")
 
     def display_scan_result(self, frame, barcodes, remaining_time):
+        # オーバーレイに渡すコンテキストラベルを作成
+        context_label = f"工程: {self.process_name} | 業者: {self.supplier_name}"
+
         # OverlayDisplay を使用 (locationの代わりにprocess_nameを渡す)
         frame = self.overlay_display.display_overlay(
-            frame, barcodes, self.scan_count,
-            self.success_count, self.failure_count, self.duplicate_count,
-            self.process_name, self.construction_number, remaining_time,
-            self.config.get('barcode_type', '-'), self.config.get('expected_length', '-')
+            frame,
+            barcodes,
+            self.scan_count,
+            self.success_count,
+            self.failure_count,
+            self.duplicate_count,
+            context_label, # 整形したラベルを渡す
+            self.construction_number,
+            remaining_time,
+            self.config.get("barcode_type", "-"),
+            self.config.get("expected_length", "-"),
         )
         return frame
-    
+
     def add_scanned_info(self, barcode_info, barcode_type):
         timestamp = time.time()
-        self.overlay_display.scanned_info.append({
-            'barcode': barcode_info,
-            'type': barcode_type,
-            'timestamp': timestamp
-        })
+        self.overlay_display.scanned_info.append(
+            {"barcode": barcode_info, "type": barcode_type, "timestamp": timestamp}
+        )
+
+    def get_current_timestamp(self):
+        """現在時刻を 'YYYY-MM-DD HH:MM:SS' 形式の文字列で返す"""
+        return datetime.now().strftime("%Y%m%d-%H%M%S")
+
 
 def main():
     """
@@ -217,12 +271,13 @@ def main():
             config=config,
             construction_number=construction_no,
             process_name=process_name,
-            supplier_name=supplier_name
+            supplier_name=supplier_name,
         )
         scanner.start()
     except Exception as e:
         print(f"ProcessScanner の起動中にエラーが発生しました: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

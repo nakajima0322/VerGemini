@@ -1,4 +1,4 @@
-﻿﻿import csv
+﻿import csv
 import os
 import sys
 from typing import List, Dict
@@ -129,7 +129,7 @@ def create_combined_csv() -> None:
 
     # --- データの結合 ---
     results_data_list: List[Dict[str, str]] = []
-    output_csv_header = ["barcode_info", "parts_no", "drawing_no", "location", "process_name", "supplier_name", "work_session_id", "worker_name"]
+    output_csv_header = ["barcode_info", "parts_no", "drawing_no", "location", "process_name", "supplier_name", "timestamp", "worker_name"]
 
     for scanned_item in scanned_data_list:
         original_barcode_val = scanned_item.get("barcode_info", "")
@@ -145,7 +145,7 @@ def create_combined_csv() -> None:
             "location": scanned_item.get("location", ""),
             "process_name": process_item_info.get("process_name", "") if process_item_info else "",
             "supplier_name": process_item_info.get("supplier_name", "") if process_item_info else "",
-            "work_session_id": process_item_info.get("work_session_id", "") if process_item_info else "",
+            "timestamp": process_item_info.get("timestamp", "") if process_item_info else "", # work_session_id から変更
             "worker_name": scanned_item.get("worker_name", "") # スキャンデータから作業者名を取得
         }
         results_data_list.append(combined_row)

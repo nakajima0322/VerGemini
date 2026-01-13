@@ -1,6 +1,7 @@
 # c:\temp\KHT_Python\VerGemini\G_PartInfoViewer.py
 import tkinter as tk
 from tkinter import ttk, messagebox
+from tkinter.font import Font
 import csv
 import os
 import sys
@@ -46,6 +47,9 @@ class PartInfoViewer:
         self.delivery_date_var = tk.StringVar()
         self.arrangement_status_var = tk.StringVar()
         self.status_var = tk.StringVar()
+        # # ★追加: 次の工程表示用 (マスターデータ整備後に復活)
+        # self.next_process_var = tk.StringVar()
+        # self.all_processes_for_part = []
 
         # バーコード解析器のインスタンス
         self.barcode_analyzer = G_ScanBCD_Analyzer(self.config) # Configを渡す
@@ -187,12 +191,10 @@ class PartInfoViewer:
         ttk.Label(display_frame, text=f"{self.arrangement_status_col_name}:").grid(row=7, column=0, padx=5, pady=2, sticky=tk.W)
         ttk.Label(display_frame, textvariable=self.arrangement_status_var).grid(row=7, column=1, padx=5, pady=2, sticky=tk.EW)
 
-
-
-
         # --- ステータス表示 ---
         status_label = ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
-        status_label.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky=(tk.W, tk.E)) # columnspan=2 に変更
+        # next_process_frameをコメントアウトしたため、rowを2に戻す
+        status_label.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky=(tk.W, tk.E))
         self.status_var.set("準備完了")
 
         # --- 同一図番検索結果表示セクション ---
@@ -213,10 +215,10 @@ class PartInfoViewer:
             else:
                 self.same_drawing_tree.column(col_name, width=100, anchor=tk.W)
 
-        self.same_drawing_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.same_drawing_tree.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
         tree_scrollbar_y = ttk.Scrollbar(same_drawing_frame, orient=tk.VERTICAL, command=self.same_drawing_tree.yview)
         self.same_drawing_tree.configure(yscrollcommand=tree_scrollbar_y.set)
-        tree_scrollbar_y.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        # tree_scrollbar_y.grid(row=0, column=1, sticky=(tk.N, tk.S)) # スクロールバーは共有しない
 
     def _on_construction_no_entered(self, event=None):
         """工事番号入力後（Enterキー押下時）の処理"""
@@ -310,6 +312,8 @@ class PartInfoViewer:
         self.supplier_var.set("")
         self.delivery_date_var.set("")
         self.arrangement_status_var.set("")
+        # # ★追加: 次工程表示もクリア (マスターデータ整備後に復活)
+        # self.next_process_var.set("---")
         # self.same_drawing_search_button.config(state=tk.DISABLED) # ボタンを無効化 (ボタン削除のため不要)
         self.same_drawing_tree.delete(*self.same_drawing_tree.get_children()) # Treeviewをクリア
 
@@ -358,6 +362,7 @@ class PartInfoViewer:
                 self.delivery_date_var.set(found_info.get("delivery_date", "---"))
                 self.arrangement_status_var.set(found_info.get("arrangement_status", "---"))
                 self.source_csv_path_var.set(target_filename) # 検索したファイル名を表示
+
                 self.status_var.set(f"バーコード '{barcode_value}' の情報が見つかりました。(ファイル: {target_filename})")
                 print(f"ログ: バーコード '{barcode_value}' の情報がファイル '{target_filename}' で見つかりました。")
                 print(f"ログ: 部品No: {self.parts_no_var.get()}, 図番: {self.drawing_no_var.get()}")
@@ -458,6 +463,7 @@ class PartInfoViewer:
                 self.supplier_var.set(info_to_display.get("supplier", "---"))
                 self.delivery_date_var.set(info_to_display.get("delivery_date", "---"))
                 self.arrangement_status_var.set(info_to_display.get("arrangement_status", "---"))
+
                 self.source_csv_path_var.set(filename_displayed)
                 self.status_var.set(f"バーコード '{barcode_value}' の情報が {filename_displayed} で見つかりました。(全s.csv検索)")
                 print(f"ログ: バーコード '{barcode_value}' の情報がファイル '{filename_displayed}' で見つかりました (全s.csv検索)。")
@@ -476,7 +482,6 @@ class PartInfoViewer:
             print(f"ログ: バーコード検索完了。図番 '{self.drawing_no_var.get()}' の同一図番検索を自動実行します。")
             self.root.update_idletasks()
             self._search_same_drawing_no() # 自動で同一図番検索を実行
-
 
     def _search_same_drawing_no(self):
         self.same_drawing_tree.delete(*self.same_drawing_tree.get_children()) # 結果をクリア

@@ -83,7 +83,7 @@ class DrawingNumberViewer:
             args.cn
             if args.cn
             else self.config.get(
-                "last_construction_number",
+                "last_construction_number_viewer",
                 self.config.get("default_construction_number", ""),
             )
         )
@@ -249,7 +249,7 @@ class DrawingNumberViewer:
         current_location_filter_str = ",".join(selected_locations)  # カンマ区切りで保存
 
         self._save_geometry()
-        self.config.set("last_construction_number", current_construction_no)
+        self.config.set("last_construction_number_viewer", current_construction_no)
         self.config.set("last_source_csv_path", current_source_csv_path)
         self.config.set(
             "last_filter_start_value",

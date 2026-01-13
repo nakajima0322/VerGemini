@@ -148,9 +148,21 @@ class LauncherApp:
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
         self.root.bind("<Escape>", lambda e: self._on_closing())
 
-        # --- フォーカスイベントのバインド ---
-        self.root.bind("<FocusIn>", self._on_focus_in)
-        self.root.bind("<FocusOut>", self._on_focus_out)
+        # --- ウィンドウを中央に配置 ---
+        # 全てのウィジェットが配置された後に実行する
+        self.root.after(10, self._center_window)
+
+    def _center_window(self):
+        """ウィンドウを画面左側に配置する"""
+        self.root.update_idletasks()
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        margin = 10
+        x = margin
+        # 画面中央から、ウィンドウの高さの半分と、タスクバーの高さの半分(約45px)を引く
+        taskbar_compensation = 45
+        y = (screen_height // 2) - (self.root.winfo_height() // 2) - taskbar_compensation
+        self.root.geometry(f"+{x}+{y}")
 
     def _check_file_exists(self, script_name):
         if not os.path.exists(script_name):
@@ -174,6 +186,10 @@ class LauncherApp:
 
         worker_name = self.worker_listbox.get(selected_indices[0])
 
+        # --- 設定ファイルの競合回避: 保存前に最新の設定を読み直す ---
+        # 他のツールがconfig.jsonを更新している可能性があるため
+        self.config.config = self.config.load_config()
+
         # 2. 新しい作業者であればリストを更新し、現在の作業者として設定を保存
         worker_list = self.config.get("worker_list", [])
         if worker_name not in worker_list:
@@ -183,9 +199,6 @@ class LauncherApp:
         self.config.save_config()
 
         print(f"作業者 '{worker_name}' を選択して {script_name} を起動します。")
-
-        # --- ツール起動直前に、ランチャーの最前面表示を一時的に解除 ---
-        self.root.attributes("-topmost", False)
 
         # --- 新しいウィンドウの推奨位置を計算 ---
         # argsリストをコピーして変更
@@ -219,7 +232,6 @@ class LauncherApp:
         finally:
             # ツール起動後、作業者リストの選択を解除し、フォーカスを外す
             self.worker_listbox.selection_clear(0, tk.END)
-            self.root.focus_set()
 
     def _open_worker_manager(self):
         """作業者リストを管理するウィンドウを開く"""
@@ -250,7 +262,7 @@ class LauncherApp:
         def populate_listbox():
             """リストボックスに現在の作業者リストを表示する"""
             listbox.delete(0, tk.END)
-            self.config.load_config()  # 最新の情報を読み込む
+            self.config.config = self.config.load_config()  # 最新の情報を読み込んで更新
             worker_list = sorted(self.config.get("worker_list", []))
             for worker in worker_list:
                 listbox.insert(tk.END, worker)
@@ -272,6 +284,8 @@ class LauncherApp:
                 f"作業者 '{selected_worker}' をリストから削除しますか？",
                 parent=manager_win,
             ):
+                # 削除前にも最新をロード
+                self.config.config = self.config.load_config()
                 current_list = self.config.get("worker_list", [])
                 if selected_worker in current_list:
                     current_list.remove(selected_worker)
@@ -289,6 +303,8 @@ class LauncherApp:
             if new_worker:
                 new_worker = new_worker.strip()
                 if new_worker:
+                    # 追加前にも最新をロード
+                    self.config.config = self.config.load_config()
                     current_list = self.config.get("worker_list", [])
                     if new_worker not in current_list:
                         current_list.append(new_worker)
@@ -322,7 +338,7 @@ class LauncherApp:
     def update_launcher_worker_list(self):
         """ランチャーの作業者リストボックスを最新の情報に更新する"""
         self.worker_listbox.delete(0, tk.END)
-        self.config.load_config()
+        self.config.config = self.config.load_config() # 最新情報をロードして内部辞書を更新
         worker_list = sorted(self.config.get("worker_list", []))
         for worker in worker_list:
             self.worker_listbox.insert(tk.END, worker)
@@ -350,10 +366,25 @@ class LauncherApp:
 
     def _run_config_editor(self):
         # 設定エディタは作業者選択が不要な場合、別のメソッドで起動
-        if not self._check_file_exists("G_ConfigEditor.py"):
+        script_name = "G_ConfigEditor.py"
+        if not self._check_file_exists(script_name):
             return
-        subprocess.Popen([sys.executable, "G_ConfigEditor.py"])
 
+        # --- 新しいウィンドウの推奨位置を計算 ---
+        args = []
+        try:
+            self.root.update_idletasks()
+            geo_str = self.root.winfo_geometry()
+            size, x_str, y_str = geo_str.split("+")
+            width, height = size.split("x")
+            new_x = int(x_str) + int(width) + 20
+            args.extend(["--pos", str(new_x), str(y_str)])
+            args.extend(["--height", str(height)])  # ウィンドウの高さを引数として追加
+        except Exception as e:
+            print(f"ウィンドウ位置の計算中にエラーが発生しました: {e}")
+
+        command = [sys.executable, script_name] + args
+        subprocess.Popen(command)
     def _run_csv_fixer(self):
         """データ修正ツール(G_ScanBCD_FixCSV.py)を起動する"""
         if not self._check_file_exists("G_ScanBCD_FixCSV.py"):
@@ -370,14 +401,6 @@ class LauncherApp:
         print("KHTツールランチャーを終了します。")
         self.root.quit()
 
-    def _on_focus_in(self, event):
-        """ウィンドウにフォーカスが戻ったときに最前面表示にする"""
-        self.root.attributes("-topmost", True)
-
-    def _on_focus_out(self, event):
-        """ウィンドウからフォーカスが外れたときに最前面表示を解除する"""
-        self.root.attributes("-topmost", False)
-
 
 if __name__ == "__main__":
     try:
@@ -386,16 +409,7 @@ if __name__ == "__main__":
         # メインのランチャーウィンドウを起動
         main_root = tk.Tk()
         app = LauncherApp(main_root, config)
-        # ウィンドウを中央に表示
-        main_root.update_idletasks()
-        screen_width = main_root.winfo_screenwidth()
-        screen_height = main_root.winfo_screenheight()
-        x = (screen_width // 2) - (main_root.winfo_width() // 2)
-        y = (screen_height // 2) - (main_root.winfo_height() // 2)
-        main_root.geometry(f"+{x}+{y}")
 
-        # ウィンドウを最前面に表示する
-        main_root.attributes("-topmost", True)
         main_root.mainloop()
 
         print("ランチャーのコード実行が完了しました。")

@@ -2,6 +2,7 @@
 import tkinter as tk
 import os  # osモジュールをインポート
 import sys  # sysをインポート
+import subprocess  # 多重起動チェックのために追加
 from tkinter import ttk, messagebox
 from G_config import Config
 from G_ProcessScanner import ProcessScanner  # スキャナークラスを直接インポート
@@ -29,12 +30,23 @@ class ProcessSelector:
         self.process_definitions = self.config.get(
             "process_definitions", ["工程未定義"]
         )
+        
+        # 読み込み時にソートを適用（完品を先頭に）
+        self._sort_process_definitions()
 
         self._build_ui()
 
         # --- ESCキーと閉じるボタンでのキャンセル処理 ---
         self.root.protocol("WM_DELETE_WINDOW", self._on_cancel)
         self.root.bind("<Escape>", lambda e: self._on_cancel())
+
+    def _sort_process_definitions(self):
+        """工程リストをソートする（完品を先頭、他は昇順）"""
+        sorted_processes = sorted(self.process_definitions)
+        if "完品" in sorted_processes:
+            sorted_processes.remove("完品")
+            sorted_processes.insert(0, "完品")
+        self.process_definitions = sorted_processes
 
     def _build_ui(self):
         main_frame = ttk.Frame(self.root, padding="15")
@@ -105,21 +117,28 @@ class ProcessSelector:
 
         # --- 設定の保存ロジック ---
         self.config.set("last_construction_number", cn)
-        # 新しい納品業者をリストに追加して保存
-        if supplier not in self.supplier_list:
+
+        # 新しい納品業者をリストに追加して保存 (大文字・小文字を区別せずにチェック)
+        if supplier and supplier not in self.supplier_list:
+            print(f"情報: 新しい納品業者 '{supplier}' を設定ファイルに追加します。")
             self.supplier_list.append(supplier)
             self.config.set("supplier_list", sorted(self.supplier_list))
+
         # 新しい工程をリストに追加して保存
-        if process_name not in self.process_definitions:
+        if process_name and process_name not in self.process_definitions:
+            print(f"情報: 新しい工程 '{process_name}' を設定ファイルに追加します。")
             self.process_definitions.append(process_name)
-            self.config.set("process_definitions", sorted(self.process_definitions))
+
+            self._sort_process_definitions()
+            self.config.set("process_definitions", self.process_definitions)
+
+        # 最後に一度だけ保存
         self.config.save_config()
 
         self.root.destroy()
 
     def get_selection(self):
         self.root.mainloop()
-        # 納品業者も返すように変更
         return self.selected_process, self.construction_number, self.supplier_name
 
     def _on_cancel(self):
@@ -135,33 +154,39 @@ def main():
     メイン処理。工程を選択させ、その情報を引数としてスキャナを起動する。
     G_ScanBCD_main.py を参考に作成。
     """
-    # --- シングルインスタンス化のためのロックファイル処理 ---
+    # --- シングルインスタンス化のためのロックファイル処理 (改善版) ---
     lock_file_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "G_ProcessSorter.py.lock"
     )
-    try:
-        # xモードでファイルを開くことで、存在しない場合のみ作成する（アトミック操作）
-        lock_file = open(lock_file_path, "x")
-        lock_file.write(str(os.getpid()))  # プロセスIDを書き込む
-        lock_file.close()
-    except FileExistsError:
-        messagebox.showwarning("起動済み", "工程仕分けツールは既に起動しています。")
-        return  # 既に起動している場合はここで終了
+
+    if os.path.exists(lock_file_path):
+        try:
+            with open(lock_file_path, "r") as f:
+                pid = int(f.read().strip())
+            # プロセスが存在するかチェック (Windowsではtasklist, Unix系ではps)
+            if sys.platform == "win32":
+                output = subprocess.check_output(["tasklist", "/FI", f"PID eq {pid}"]).decode('utf-8', 'ignore')
+                if str(pid) in output:
+                    messagebox.showwarning("起動済み", "工程仕分けツールは既に起動しています。")
+                    return
+            else: # macOS, Linux
+                # psコマンドでプロセスが存在するか確認
+                if os.system(f"ps -p {pid} > /dev/null") == 0:
+                    messagebox.showwarning("起動済み", "工程仕分けツールは既に起動しています。")
+                    return
+            # 実行中でなければロックファイルを削除
+            os.remove(lock_file_path)
+        except (ValueError, FileNotFoundError, subprocess.CalledProcessError):
+            # ファイルが読めない、プロセスIDが不正などの場合は、ロックファイルを削除
+            try:
+                os.remove(lock_file_path)
+            except FileNotFoundError:
+                pass # すでに消えている場合は何もしない
 
     def cleanup_lock_file():
         """ロックファイルを削除するクリーンアップ関数"""
         if os.path.exists(lock_file_path):
             os.remove(lock_file_path)
-
-    # --- コマンドライン引数から位置情報を取得 ---
-    pos_args = {}
-    if "--pos" in sys.argv:
-        try:
-            index = sys.argv.index("--pos")
-            pos_args["x"] = int(sys.argv[index + 1])
-            pos_args["y"] = int(sys.argv[index + 2])
-        except (ValueError, IndexError):
-            pass  # 引数が不正な場合は無視
 
     # --- スプラッシュスクリーンの表示 ---
     splash_root = tk.Tk()
@@ -186,6 +211,9 @@ def main():
 
     try:
         # --- 時間のかかる初期化処理 ---
+        with open(lock_file_path, "w") as f:
+            f.write(str(os.getpid()))
+
         config = Config("config.json")
 
         # メインウィンドウを裏で作成
@@ -196,6 +224,17 @@ def main():
         # --- 初期化完了後、スプラッシュを消してメインを表示 ---
         progress.stop()  # プログレスバーのアニメーションを停止
         splash_root.destroy()
+
+        # --- コマンドライン引数から位置情報を取得 ---
+        pos_args = {}
+        if "--pos" in sys.argv:
+            try:
+                index = sys.argv.index("--pos")
+                pos_args["x"] = int(sys.argv[index + 1])
+                pos_args["y"] = int(sys.argv[index + 2])
+            except (ValueError, IndexError):
+                pass  # 引数が不正な場合は無視
+
         # 位置情報があれば設定
         if "x" in pos_args and "y" in pos_args:
             main_root.geometry(f"+{pos_args['x']}+{pos_args['y']}")
@@ -209,7 +248,6 @@ def main():
             print(
                 "工程、工事番号、納品業者のいずれかが選択されなかったため、処理を中断します。"
             )
-            cleanup_lock_file()  # 終了前にロックファイルを削除
             return
 
         print(
@@ -225,16 +263,35 @@ def main():
         )
         scanner.start()  # スキャンウィンドウが閉じるまで待機
 
-        # 3. スキャン終了後に結果を表示
-        result_display = ResultDisplay()
-        result_display.show_results(scanner.scan_count, process, construction_no)
-
-        # 4. ★★★ スキャン完了後に、CSVの重複・不正チェックを自動実行 ★★★
-        print("\n工程データの重複・不正チェックを実行します...")
+        # CSVの状態チェック (重複・異常データの件数を取得)
         processed_csv_file = os.path.join(
             config.get("data_dir", "data"),
             f"{scanner.construction_number}_processed.csv",
         )
+        csv_duplicates = 0
+        csv_invalid = 0
+        if os.path.exists(processed_csv_file):
+            handler = CSVHandler(processed_csv_file, config)
+            csv_status = handler.check_data_status()
+            csv_duplicates = csv_status["duplicates"]
+            csv_invalid = csv_status["invalid"]
+
+        # 3. スキャン終了後に結果を表示
+        result_display = ResultDisplay()
+        result_display.show_results(
+            scanner.scan_count,
+            process,
+            construction_no,
+            supplier_name,
+            context_label="工程",
+            success_count=scanner.success_count,
+            duplicate_count=csv_duplicates,
+            failure_count=csv_invalid
+        )
+
+        # 4. ★★★ スキャン完了後に、CSVの重複・不正チェックを自動実行 ★★★
+        print("\n工程データの重複・不正チェックを実行します...")
+        # processed_csv_file は上で定義済み
         if os.path.exists(processed_csv_file):
             # データ修正ツールのハンドラーを呼び出す
             handler = CSVHandler(processed_csv_file, config)
@@ -245,10 +302,11 @@ def main():
             )
     except Exception as e:
         # エラーが発生した場合はスプラッシュを閉じてからメッセージ表示
-        if "progress" in locals():
-            progress.stop()
-        if "splash_root" in locals() and splash_root.winfo_exists():
-            splash_root.destroy()
+        if "progress" in locals() and progress.winfo_exists():
+            # progressバーが存在すれば、親のsplash_rootも存在すると考えられる
+            if splash_root.winfo_exists():
+                progress.stop()
+                splash_root.destroy()
         messagebox.showerror(
             "実行エラー", f"工程スキャナーの実行中にエラーが発生しました:\n{e}"
         )

@@ -2,6 +2,7 @@
 # 場所情報の選択画面を表示するクラス
 import tkinter as tk
 from tkinter import messagebox
+from tkinter import ttk
 
 class LocationSelector:
     # 要求される設定値のキー
@@ -85,6 +86,10 @@ class LocationSelector:
         # Bind the window's close button ('X') to the cancel function
         root.protocol("WM_DELETE_WINDOW", on_cancel)
 
+        # --- メインフレーム ---
+        main_frame = tk.Frame(root, padx=10, pady=5)
+        main_frame.pack(expand=True, fill=tk.BOTH)
+
         # ウィジェットの作成
         # 工事番号入力欄
         tk.Label(root, text="工事番号（4桁の数字・確認用）", font=("Arial", 10)).pack(pady=(10,2))
@@ -100,26 +105,60 @@ class LocationSelector:
         # フォーカス時に全選択するイベントをバインド
         construction_entry.bind("<FocusIn>", select_all_on_focus)
 
+        # --- 納品業者と完了工程の選択フレーム ---
+        option_frame = tk.LabelFrame(main_frame, text="納品時情報 (任意入力)", padding=10)
+        option_frame.pack(fill=tk.X, pady=10)
+        option_frame.columnconfigure(1, weight=1)
+
+        # 納品業者
+        tk.Label(option_frame, text="納品業者:", font=("Arial", 10)).grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        supplier_combo = ttk.Combobox(option_frame, values=self.suppliers, width=25)
+        supplier_combo.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+
+        # 完了済み工程
+        tk.Label(option_frame, text="完了済み工程\n(複数選択可):", font=("Arial", 10)).grid(row=1, column=0, padx=5, pady=5, sticky="nw")
+        process_listbox_frame = ttk.Frame(option_frame)
+        process_listbox_frame.grid(row=1, column=1, rowspan=2, padx=5, pady=5, sticky="nsew")
+        process_listbox_frame.rowconfigure(0, weight=1)
+        process_listbox_frame.columnconfigure(0, weight=1)
+        option_frame.rowconfigure(1, weight=1) # Listboxの高さが伸縮するように
+
+        process_listbox = tk.Listbox(process_listbox_frame, selectmode="extended", exportselection=False, height=5)
+        for process in self.processes:
+            process_listbox.insert(tk.END, process)
+        process_listbox.grid(row=0, column=0, sticky="nsew")
+        process_scrollbar = ttk.Scrollbar(process_listbox_frame, orient="vertical", command=process_listbox.yview)
+        process_scrollbar.grid(row=0, column=1, sticky="ns")
+        process_listbox.config(yscrollcommand=process_scrollbar.set)
+        tk.Label(option_frame, text="※品名/備考に工程名が含まれる部品のみ記録します", font=("Arial", 8), foreground="gray").grid(row=3, column=1, padx=5, sticky="w")
+
+
         # 場所選択の説明
         tk.Label(root, text="場所を選択してください", font=("Arial", 10)).pack(padx=10)
 
         # ボタンで選択する方法
         location_buttons = []  # ボタンを格納するリスト
+        # ボタンをグリッドで配置するためのフレーム
+        button_grid_frame = tk.Frame(main_frame)
+        button_grid_frame.pack(pady=5)
+        cols = 3 # 3列で表示
         for loc in self.locations:
-            button = tk.Button(root, text=loc, font=("Arial", 10), command=lambda location_name=loc: self._select_location_by_button(location_name, construction_entry, root), width=10)
-            button.pack(pady=2)
+            button = tk.Button(button_grid_frame, text=loc, font=("Arial", 10),
+                               command=lambda location_name=loc: self._select_location_by_button(location_name, construction_entry, root), width=10)
+            row_num, col_num = divmod(len(location_buttons), cols)
+            button.grid(row=row_num, column=col_num, padx=5, pady=2)
             location_buttons.append(button)  # ボタンをリストに追加
-
+            
         # テキストボックスで入力する方法
-        tk.Label(root, text="または、直接入力してください", font=("Arial", 10)).pack(pady=(10,2))
-        location_entry = tk.Entry(root, font=("Arial", 10), justify="center", width=20)
+        tk.Label(main_frame, text="または、直接入力してください", font=("Arial", 10)).pack(pady=(10,2))
+        location_entry = tk.Entry(main_frame, font=("Arial", 10), justify="center", width=20)
         location_entry.insert(0, self.location)  # 初期値を設定
         location_entry.pack(pady=5)
 
         # フォーカス時に全選択するイベントをバインド
         location_entry.bind("<FocusIn>", select_all_on_focus)
 
-        submit_button = tk.Button(root, text="入力を確定", font=("Arial", 10), command=lambda: self._submit_location_by_entry(location_entry, construction_entry, root))
+        submit_button = tk.Button(main_frame, text="入力を確定", font=("Arial", 10), command=lambda: self._submit_location_by_entry(location_entry, construction_entry, root))
         submit_button.pack(pady=5)
 
         # 設定情報の表示 (未使用の csv_file 変数を削除し、直接 config から取得)
@@ -129,8 +168,8 @@ class LocationSelector:
         expected_length = self.config.get("expected_length", 10)
 
         info_text = f"DATA: \t{csv_file}\nLOG: \t{scan_log}\nTYPE: \t{barcode_type}\nDIGIT: \t{expected_length} 桁"
-        tk.Label(root, text="\n【設定情報】", font=("Arial", 10), fg="gray").pack()
-        tk.Label(root, text=info_text, font=("Arial", 10), fg="gray", justify="left").pack(padx=10)
+        tk.Label(main_frame, text="\n【設定情報】", font=("Arial", 10), fg="gray").pack()
+        tk.Label(main_frame, text=info_text, font=("Arial", 10), fg="gray", justify="left").pack(padx=10)
 
         # ウィンドウのサイズを自動調整
         root.update_idletasks()  # ウィジェットのサイズを計算
@@ -196,7 +235,7 @@ class LocationSelector:
         root.bind("<Down>", on_down_arrow)
 
         root.mainloop()
-        return self.location, self.construction_number
+        return self.location, self.construction_number, None, [] # 後方互換性のためNoneと空リストを返す
 
 if __name__ == "__main__":
     print("\n単体起動中...")

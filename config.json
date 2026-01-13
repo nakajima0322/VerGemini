@@ -1,5 +1,43 @@
 {
     "___ACTIVE_SETTINGS___": "--- 現在有効な設定 ---",
+    "process_definitions": [
+        "完品",
+        "AA10/黒",
+        "AA30/硬質",
+        "AA6",
+        "ICr30",
+        "ICr5",
+        "Ni-p5",
+        "Ni10b",
+        "Zn8b/3価",
+        "ユニクロ",
+        "塗装（2.5GY6/2）",
+        "塗装（2.5Y8/14）",
+        "塗装（5GY7/0.7）",
+        "黒染"
+    ],
+    "supplier_list": [
+        "シモノ",
+        "シャトル",
+        "セプラ",
+        "ノサカテック",
+        "ファモス",
+        "ユーカリ工業",
+        "レーザマックス",
+        "宮本鉄工",
+        "小松鋼機",
+        "日本海企画",
+        "泉工業所",
+        "田中精機",
+        "硝和硝子"
+    ],
+    "location_list": [
+        "カブト1F",
+        "カブト2F",
+        "コンテナ",
+        "棚",
+        "棚（箱）"
+    ],
     "auto_stop": true,
     "barcode_type": "CODE39",
     "camera_height": 480,
@@ -22,6 +60,7 @@
         "塗装": "Painting",
         "ユニクロメッキ": "Unichrome Plating"
     },
+    "japanese_font_path": "C:/Windows/Fonts/meiryo.ttc",
     "display_time": 300,
     "expected_length": 10,
     "font_scale": 0.5,
@@ -53,8 +92,8 @@
         "size_too_large_threshold": 148000
     },
     "___STATE_AND_HISTORY___": "--- 前回終了時の状態（自動更新） ---",
-    "last_construction_no_part_viewer": "",
-    "last_construction_number": "3804",
+    "last_construction_no_part_viewer": "3804",
+    "last_construction_number": "6329",
     "last_construction_number_scanner": "9999",
     "last_filter_start_value": "0",
     "last_location_filter_viewer": "",
@@ -75,7 +114,7 @@
         "PartInfoViewer": "1340x650+10+10",
         "DrawingNumberViewer": "853x600+283+84",
         "WorkflowManager": "800x600+283+84",
-        "DataViewerEditor": "700x479+527+145"
+        "DataViewerEditor": "700x479+333+145"
     },
     "___UNUSED_OR_DEPRECATED___": "--- 未使用または旧式の項目 ---",
     "barcode_data": [],
@@ -87,10 +126,7 @@
     "scan_count": 0,
     "scanned_info": [],
     "worker_list": [
-        "中島",
-        "作業者A",
-        "作業者B",
-        "作業者C"
+        "中島"
     ],
     "current_worker": "中島"
 }

@@ -11,6 +11,7 @@ from G_ScanBCD_Scanner import BarcodeScanner
 from G_ScanBCD_FixCSV import CSVHandler
 from G_config import Config
 from G_ScanBCD_Results import ResultDisplay
+from create_combined_csv import load_source_data, _normalize_id_string
 
 
 def load_configuration():
@@ -34,24 +35,69 @@ def select_location_and_construction(config):
     """Handles the location and construction number selection."""
     print("場所と工事番号を選択してください...")
     location_selector = LocationSelector(config)
-    location, construction_number = location_selector.get_location()
+    location, construction_number, supplier, _ = location_selector.get_location() # supplierを受け取る
 
     if not location:
         print("⚠ 場所が選択されませんでした。処理を中止します。")
-        return None, None
+        return None, None, None
 
     print(f"✅ 選択された場所: {location}, 工事番号: {construction_number}")
-    return location, construction_number
+    return location, construction_number, supplier
 
 
-def start_barcode_scanning(config, location, construction_number):
+def start_barcode_scanning(config, location, construction_number, supplier):
     """Initializes and starts the barcode scanner."""
     print("バーコードスキャナーを起動しています...")
     scanner = BarcodeScanner(
-        config=config, location=location, construction_number=construction_number
+        config=config, location=location, construction_number=construction_number, supplier=supplier
     )
     scanner.start()
     return scanner
+
+
+def perform_verification(config, construction_number):
+    """スキャンデータと発注データを照合し、結果を返す"""
+    print("発注データとの照合を行っています...")
+    
+    # パス設定
+    data_dir = config.get("data_dir", "data")
+    source_data_dir = config.get("source_data_dir", "Source")
+    scan_csv_path = os.path.join(data_dir, f"{construction_number}.csv")
+    source_csv_path = os.path.join(source_data_dir, f"{construction_number}s.csv")
+
+    # カラム設定
+    order_col = config.get("source_csv_order_no_column", "発注伝票№")
+    drawing_col = config.get("source_csv_drawing_no_column", "図番")
+    parts_col = config.get("source_csv_parts_no_column", "部品№")
+
+    # Sourceデータ読み込み
+    source_map = load_source_data(source_csv_path, order_col, drawing_col, parts_col)
+    if not source_map:
+        return {"source_loaded": False}
+
+    # Scanデータ読み込み
+    handler = CSVHandler(scan_csv_path, config)
+    scan_data = handler.load_csv()
+
+    match_count = 0
+    mismatch_count = 0
+    
+    # 照合
+    for row in scan_data:
+        barcode = row.get("barcode_info", "")
+        normalized_bc = _normalize_id_string(barcode)
+        if normalized_bc in source_map:
+            match_count += 1
+        else:
+            mismatch_count += 1
+
+    return {
+        "source_loaded": True,
+        "match_count": match_count,
+        "mismatch_count": mismatch_count,
+        "total_source_count": len(source_map),
+        "scan_total": len(scan_data)
+    }
 
 
 def run_csv_duplicate_check(config, construction_number):
@@ -143,20 +189,38 @@ def main():
     if config is None:
         return
 
-    location, construction_number = select_location_and_construction(config)
+    location, construction_number, supplier = select_location_and_construction(config)
     if location is None:
         return
 
-    scanner = start_barcode_scanning(config, location, construction_number)
+    scanner = start_barcode_scanning(config, location, construction_number, supplier)
     if scanner is None:
         return
 
-    run_csv_duplicate_check(config, construction_number)
+    # スキャン完了直後に照合を実行
+    verification_result = perform_verification(config, construction_number)
+
+    # CSVの状態チェック (重複・異常データの件数を取得)
+    csv_file = os.path.join(config.get("data_dir", "data"), f"{construction_number}.csv")
+    csv_handler = CSVHandler(csv_file, config)
+    csv_status = csv_handler.check_data_status()
 
     # ResultDisplay クラスのインスタンスを作成
     result_display = ResultDisplay()
-    # show_results メソッドを呼び出し、スキャン結果を表示
-    result_display.show_results(scanner.scan_count, location, construction_number)
+    # show_results メソッドを呼び出し、スキャン結果と照合結果を表示
+    result_display.show_results(
+        scanner.scan_count,
+        location,
+        construction_number,
+        supplier,
+        context_label="場所",
+        verification_result=verification_result,
+        success_count=scanner.success_count,
+        duplicate_count=csv_status["duplicates"],
+        failure_count=csv_status["invalid"]
+    )
+
+    run_csv_duplicate_check(config, construction_number)
 
     # 後続ツールの起動選択ダイアログを表示
     show_tool_launcher_dialog()

@@ -4,6 +4,7 @@ from tkinter import ttk, messagebox
 import json
 import os
 import shutil
+import argparse
 from collections import OrderedDict
 
 
@@ -16,6 +17,9 @@ class ConfigEditorApp:
         self.config_definition = []
         self.mapping_widgets = []  # マッピング用ウィジェットを保持
         self.window_geometry_widgets = {}  # ウィンドウジオメトリ用ウィジェットを保持
+        self.list_widgets = {}  # リスト設定用ウィジェットを保持
+        self.list_frames = {}  # リスト設定のフレームを保持
+        self.list_keys = ["process_definitions", "supplier_list", "location_list"]
 
         # 設定対象のツールクラス名をリストで定義
         self.target_tool_classes = [
@@ -42,28 +46,9 @@ class ConfigEditorApp:
         main_frame = ttk.Frame(root, padding="10")
         main_frame.pack(expand=True, fill="both")
 
-        self.notebook = ttk.Notebook(main_frame)
-        self.notebook.pack(expand=True, fill="both", pady=5)
-
-        # タブを作成
-        self.tab_basic = ttk.Frame(self.notebook, padding="10")
-        self.tab_folders = ttk.Frame(self.notebook, padding="10")
-        self.tab_csv = ttk.Frame(self.notebook, padding="10")
-        self.tab_display = ttk.Frame(self.notebook, padding="10")
-        self.tab_mapping = ttk.Frame(self.notebook, padding="10")  # マッピング用タブ
-        self.tab_window = ttk.Frame(self.notebook, padding="10")  # ウィンドウ設定用タブ
-        self.tab_state = ttk.Frame(self.notebook, padding="10")
-
-        self.notebook.add(self.tab_basic, text="基本設定")
-        self.notebook.add(self.tab_folders, text="フォルダ設定")
-        self.notebook.add(self.tab_csv, text="CSV列名設定")
-        self.notebook.add(self.tab_display, text="動作・表示設定")
-        self.notebook.add(self.tab_mapping, text="表示名マッピング")  # タブ追加
-        self.notebook.add(self.tab_window, text="ウィンドウ設定")
-        self.notebook.add(self.tab_state, text="状態(表示のみ)")
-
+        # --- ボタンフレームを先にウィンドウ下部に配置 ---
         button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill="x", pady=5)
+        button_frame.pack(side="bottom", fill="x", pady=(10, 0))
         save_button = ttk.Button(
             button_frame, text="保存して閉じる", command=self.save_and_close
         )
@@ -73,6 +58,26 @@ class ConfigEditorApp:
         )
         cancel_button.pack(side="right")
 
+        # --- 残りの領域にNotebook(タブ)を配置 ---
+        self.notebook = ttk.Notebook(main_frame)
+        self.notebook.pack(expand=True, fill="both", pady=5)
+
+        # --- タブの作成 (Notebook作成後に行う) ---
+        self.tab_lists = ttk.Frame(self.notebook, padding="10")
+        self.tab_folders = ttk.Frame(self.notebook, padding="10")
+        self.tab_csv = ttk.Frame(self.notebook, padding="10")
+        self.tab_display = ttk.Frame(self.notebook, padding="10")
+        self.tab_mapping = ttk.Frame(self.notebook, padding="10")
+        self.tab_window = ttk.Frame(self.notebook, padding="10")
+        self.tab_state = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(self.tab_lists, text="リスト設定")  # tab_basic から変更
+        self.notebook.add(self.tab_folders, text="フォルダ設定")
+        self.notebook.add(self.tab_csv, text="CSV列名設定")
+        self.notebook.add(self.tab_display, text="動作・表示設定")
+        self.notebook.add(self.tab_mapping, text="表示名マッピング")  # タブ追加
+        self.notebook.add(self.tab_window, text="ウィンドウ設定")
+        self.notebook.add(self.tab_state, text="状態(表示のみ)")
+
         self.load_config()
         self._define_config_structure()
         self.create_widgets()
@@ -80,6 +85,46 @@ class ConfigEditorApp:
 
         self.root.protocol("WM_DELETE_WINDOW", self.root.destroy)
         self.root.bind("<Escape>", lambda e: self.root.destroy())
+
+        # --- ウィンドウサイズの自動調整とタスクバー重なり回避 ---
+        # ウィジェットの配置とデータ投入が完了した時点でサイズを計算
+        self.root.update_idletasks()
+
+        # 必要な幅と高さを取得
+        req_width = self.root.winfo_reqwidth()
+        req_height = self.root.winfo_reqheight()
+
+        # 画面の高さを取得し、タスクバーの想定分を引いて最大高さを設定
+        screen_height = self.root.winfo_screenheight()
+        taskbar_offset = 90  # タスクバー用のオフセット (80 + 10)
+        max_height = screen_height - taskbar_offset
+
+        # ウィンドウの高さが最大高さを超えないように調整
+        final_height = min(req_height, max_height)
+
+        self.root.geometry(f"{req_width}x{final_height}")
+
+        # --- ウィンドウ位置の決定 ---
+        # 1. コマンドライン引数 --pos があればそれを使う (ランチャーからの起動)
+        # 2. なければ画面左上に配置 (単体起動)
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--pos", nargs=2, type=int, help="Window position (x y)")
+        parser.add_argument("--height", type=int, help="Window height")
+        args, _ = parser.parse_known_args()
+
+        # ランチャーから高さが指定された場合は、それを優先する
+        if args.height:
+            final_height = args.height
+
+        self.root.geometry(f"{req_width}x{final_height}")
+
+        if args.pos:
+            self.root.geometry(f"+{args.pos[0]}+{args.pos[1]}")
+        else:
+            # デフォルトは画面左上
+            margin = 10
+            self.root.geometry(f"+{margin}+{margin}")
+
 
     def load_config(self):
         try:
@@ -164,41 +209,41 @@ class ConfigEditorApp:
         """設定項目の構造を定義します。"""
         self.config_definition = [
             # (key, label, type, tab, options)
-            ("camera_index", "カメラ番号", "entry", self.tab_basic, {"type": int}),
+            ("camera_index", "カメラ番号", "entry", self.tab_display, {"type": int}),
             (
                 "camera_width",
                 "カメラ解像度 (幅)",
                 "entry",
-                self.tab_basic,
+                self.tab_display,
                 {"type": int},
             ),
             (
                 "camera_height",
                 "カメラ解像度 (高さ)",
                 "entry",
-                self.tab_basic,
+                self.tab_display,
                 {"type": int},
             ),
-            ("target_fps", "ターゲットFPS", "entry", self.tab_basic, {"type": int}),
+            ("target_fps", "ターゲットFPS", "entry", self.tab_display, {"type": int}),
             (
                 "barcode_type",
                 "バーコードタイプ",
                 "entry",
-                self.tab_basic,
+                self.tab_display,
                 {"type": str},
             ),
             (
                 "expected_length",
                 "バーコード期待長",
                 "entry",
-                self.tab_basic,
+                self.tab_display,
                 {"type": int},
             ),
             ("data_dir", "データフォルダ名", "entry", self.tab_folders, {"type": str}),
             ("log_dir", "ログフォルダ名", "entry", self.tab_folders, {"type": str}),
             (
                 "source_data_dir",
-                "発注伝票フォルダ名",
+                "発注伝票(Source)フォルダ名",
                 "entry",
                 self.tab_folders,
                 {"type": str},
@@ -332,6 +377,15 @@ class ConfigEditorApp:
                 self._add_checkbutton(parent, key, label)
             elif widget_type == "rgb":
                 self._add_rgb_entry(parent, key, label)
+
+        # --- リスト設定タブ ---
+        # リスト項目が多くなると画面からはみ出すため、サブタブ化して表示領域を確保する
+        self.lists_notebook = ttk.Notebook(self.tab_lists)
+        self.lists_notebook.pack(expand=True, fill="both", padx=5, pady=5)
+
+        self._create_list_tab("process_definitions", "工程リスト")
+        self._create_list_tab("supplier_list", "納品業者リスト")
+        self._create_list_tab("location_list", "保管場所リスト")
 
         # --- 表示名マッピングタブ ---
         self._create_mapping_tab()
@@ -468,6 +522,83 @@ class ConfigEditorApp:
         except (ValueError, tk.TclError):
             # 解釈できない値が入力された場合は、プレビューをグレーに設定
             widget_info["preview"].config(bg="#808080")
+
+    def _create_list_tab(self, key, label_text):
+        """リスト設定タブ内に、リスト編集用のUIを作成する"""
+        # サブタブとしてフレームを追加
+        frame = ttk.Frame(self.lists_notebook, padding="10")
+        self.lists_notebook.add(frame, text=label_text)
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(0, weight=1)
+        self.list_frames[key] = frame
+
+        # スクロール可能なListbox
+        listbox_container = ttk.Frame(frame)
+        listbox_container.grid(row=0, column=0, sticky="nsew")
+        listbox_container.rowconfigure(0, weight=1)
+        listbox_container.columnconfigure(0, weight=1)
+
+        listbox = tk.Listbox(listbox_container, selectmode="extended")
+        listbox.grid(row=0, column=0, sticky="nsew")
+        scrollbar = ttk.Scrollbar(
+            listbox_container, orient="vertical", command=listbox.yview
+        )
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        listbox.config(yscrollcommand=scrollbar.set)
+
+        # ボタンフレーム
+        button_frame = ttk.Frame(frame)
+        button_frame.grid(row=1, column=0, pady=5, sticky="ew")
+
+        add_entry = ttk.Entry(button_frame, width=20)
+        add_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
+
+        def add_item():
+            item = add_entry.get().strip()
+            if item and item not in listbox.get(0, tk.END):
+                listbox.insert(tk.END, item)
+                add_entry.delete(0, tk.END)
+
+        add_entry.bind("<Return>", lambda e: add_item())
+        add_button = ttk.Button(button_frame, text="追加", command=add_item)
+        add_button.pack(side="left", padx=5)
+
+        def delete_selected():
+            selected_indices = listbox.curselection()
+            if not selected_indices:
+                return
+            # インデックスが大きい方から削除しないとずれる
+            for i in reversed(selected_indices):
+                listbox.delete(i)
+
+        delete_button = ttk.Button(
+            button_frame, text="選択を削除", command=delete_selected
+        )
+        delete_button.pack(side="left", padx=5)
+
+        # 上下移動ボタン
+        def move_item(direction):
+            selected_indices = listbox.curselection()
+            if not selected_indices:
+                return
+            for i in selected_indices:
+                if direction == "up" and i > 0:
+                    text = listbox.get(i)
+                    listbox.delete(i)
+                    listbox.insert(i - 1, text)
+                    listbox.selection_set(i - 1)
+                elif direction == "down" and i < listbox.size() - 1:
+                    text = listbox.get(i)
+                    listbox.delete(i)
+                    listbox.insert(i + 1, text)
+                    listbox.selection_set(i + 1)
+
+        up_button = ttk.Button(button_frame, text="↑", command=lambda: move_item("up"))
+        up_button.pack(side="left", padx=(10, 2))
+        down_button = ttk.Button(button_frame, text="↓", command=lambda: move_item("down"))
+        down_button.pack(side="left")
+
+        self.list_widgets[key] = listbox
 
     def _create_mapping_tab(self):
         header_frame = ttk.Frame(self.tab_mapping)
@@ -866,8 +997,11 @@ class ConfigEditorApp:
                 elif info["widget_type"] == "rgb":
                     for i in range(3):
                         info["vars"][i].set(
-                            str(value[i] if value and len(value) > i else 0)
+                            str(value[i])
+                            if value and isinstance(value, list) and len(value) > i
+                            else "0"
                         )
+                        self._update_color_preview(key)
 
         # --- マッピングデータの読み込みと自動追加 ---
         mapping_data = self.config_data.get("display_text_mapping", OrderedDict())
@@ -886,6 +1020,11 @@ class ConfigEditorApp:
         # UIに表示
         for i, (k, v) in enumerate(mapping_data.items()):
             self._add_mapping_row(k, v, row_index=i)
+
+        # --- リストデータの読み込み ---
+        for key in self.list_keys:
+            for item in self.config_data.get(key, []):
+                self.list_widgets[key].insert(tk.END, item)
 
         # ウィンドウジオメトリのデータを読み込む
         screen_width = self.root.winfo_screenwidth()
@@ -988,6 +1127,11 @@ class ConfigEditorApp:
                     "入力エラー", f"設定 '{key}' の値が不正です。\n{e}"
                 )
                 return
+
+        # リスト設定の保存
+        for key in self.list_keys:
+            items = self.list_widgets[key].get(0, tk.END)
+            new_config[key] = list(items)
 
         # マッピングの保存
         mapping_dict = OrderedDict()
